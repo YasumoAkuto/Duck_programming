@@ -157,7 +157,7 @@ HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow )
     g_hInst = hInstance;
     RECT rc = { 0, 0, 640, 480 };
     AdjustWindowRect( &rc, WS_OVERLAPPEDWINDOW, FALSE );
-    g_hWnd = CreateWindow( L"TutorialWindowClass", L"Direct3D 11 Tutorial 7", WS_OVERLAPPEDWINDOW,
+    g_hWnd = CreateWindow( L"TutorialWindowClass", L"duck programming", WS_OVERLAPPEDWINDOW,
                            CW_USEDEFAULT, CW_USEDEFAULT, rc.right - rc.left, rc.bottom - rc.top, NULL, NULL, hInstance,
                            NULL );
     if( !g_hWnd )
@@ -365,35 +365,35 @@ HRESULT InitDevice()
     // Create vertex buffer
     SimpleVertex vertices[] =
     {
-        { XMFLOAT3( -1.0f, 0.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 0.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.5f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.5f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.5f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.5f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -0.5f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, -0.5f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, -0.5f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -0.5f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -0.5f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( -1.0f, -0.5f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( -1.0f, 0.5f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.5f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( 1.0f, -0.5f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, -0.5f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.5f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( 1.0f, 0.5f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 0.0f, -1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -0.5f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, -0.5f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.5f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.5f, -1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 0.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, -0.5f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, -0.5f, 1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.5f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.5f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
     };
 
     D3D11_BUFFER_DESC bd;
@@ -472,7 +472,7 @@ HRESULT InitDevice()
         return hr;
 
     // Load the Texture
-    hr = D3DX11CreateShaderResourceViewFromFile( g_pd3dDevice, L"seafloor.dds", NULL, NULL, &g_pTextureRV, NULL );
+    hr = D3DX11CreateShaderResourceViewFromFile( g_pd3dDevice, L"stage.dds", NULL, NULL, &g_pTextureRV, NULL );
     if( FAILED( hr ) )
         return hr;
 
@@ -595,7 +595,7 @@ void Render( )
     if (key_input & KEY_RIGHT) x += 0.001f;
     else if (key_input & KEY_LEFT) x -= 0.001f;
 
-    g_World = XMMatrixRotationY(t)  *XMMatrixTranslation(x, 0, 0);
+    g_World = XMMatrixRotationY(XM_PI / 4)  *XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y‰ñ“]ˆ—(ŽžŠÔ‚²‚Æ‰ñ“])
     //g_World *= XMMatrixTranslationFromVector(translate);  //ˆÚ“®‚µ‚½‚©‚Á‚½‚¯‚ÇAXMVECTOR‚ª‚æ‚­‚í‚©‚ç‚ñ
@@ -607,7 +607,8 @@ void Render( )
     //
     // Clear the back buffer
     //
-    float ClearColor[4] = { 0.0f, 0.125f, 0.3f, 1.0f }; // red, green, blue, alpha
+    float ColorRGBList[3] = { 224, 255, 255 };      //0`255‚Ü‚Å
+    float ClearColor[4] = { ColorRGBList[0] / 255, ColorRGBList[1] / 255, ColorRGBList[2] / 255, 1.0f }; // red, green, blue, alpha
     g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, ClearColor );
 
     //
@@ -619,6 +620,8 @@ void Render( )
     // Update variables that change once per frame
     //
     CBChangesEveryFrame cb;
+
+    //‰½ŒÂ‚à•\Ž¦‚µ‚Ä‚½Žž‚ÌŽc‚è
     //for (int i = 1; i < 10; i = i + 2) {
     //    g_World *= XMMatrixTranslation(0, 0, i);
     //    cb.mWorld = XMMatrixTranspose( g_World );
@@ -638,6 +641,9 @@ void Render( )
     //    g_pImmediateContext->PSSetSamplers( 0, 1, &g_pSamplerLinear );
     //    g_pImmediateContext->DrawIndexed( 36, 0, 0 );
     //}
+
+
+
     g_World *= XMMatrixTranslation(0, 0, 0);
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.vMeshColor = g_vMeshColor;
