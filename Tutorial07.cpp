@@ -361,14 +361,14 @@ HRESULT InitDevice()
     pPSBlob->Release();
     if( FAILED( hr ) )
         return hr;
-
+    //XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
     // Create vertex buffer
     SimpleVertex vertices[] =
     {
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT2( 3.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT2( 3.0f, 3.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 3.0f ) },
+        { XMFLOAT3( -1.0f, 0.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( 1.0f, 0.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
         { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
         { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
@@ -376,24 +376,24 @@ HRESULT InitDevice()
         { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
         { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 2.0f, 0.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT2( 2.0f, 2.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 2.0f ) },
+        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
+        { XMFLOAT3( -1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
         { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
         { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( 1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( 1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
         { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
         { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( 1.0f, 0.0f, -1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.0f, -1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
 
         { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f ) },
         { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 0.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
+        { XMFLOAT3( 1.0f, 0.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f ) },
+        { XMFLOAT3( -1.0f, 0.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f ) },
     };
 
     D3D11_BUFFER_DESC bd;
@@ -504,7 +504,8 @@ HRESULT InitDevice()
     g_pImmediateContext->UpdateSubresource( g_pCBNeverChanges, 0, NULL, &cbNeverChanges, 0, 0 );
 
     // Initialize the projection matrix
-    g_Projection = XMMatrixPerspectiveFovLH( XM_PIDIV4, width / (FLOAT)height, 0.01f, 100.0f );
+    //g_Projection = XMMatrixPerspectiveFovLH( XM_PIDIV4, width / (FLOAT)height, 0.01f, 100.0f );   //透視投影
+    g_Projection = XMMatrixOrthographicLH(width / 50, (FLOAT)height / 50, 1.0f, 1000.0f);   //平行投影
     
     CBChangeOnResize cbChangesOnResize;
     cbChangesOnResize.mProjection = XMMatrixTranspose( g_Projection );
@@ -581,7 +582,7 @@ void Render( )
     else
     {
         static DWORD dwTimeStart = 0;
-        DWORD dwTimeCur = GetTickCount();
+        DWORD dwTimeCur = GetTickCount64();
         if( dwTimeStart == 0 )
             dwTimeStart = dwTimeCur;
         t = ( dwTimeCur - dwTimeStart ) / 1000.0f;  //時間
@@ -595,12 +596,13 @@ void Render( )
     else if (key_input & KEY_LEFT) x -= 0.001f;
 
     g_World = XMMatrixRotationY(t)  *XMMatrixTranslation(x, 0, 0);
+    //g_World = XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y回転処理(時間ごと回転)
     //g_World *= XMMatrixTranslationFromVector(translate);  //移動したかったけど、XMVECTORがよくわからん
     // Modify the color
-    g_vMeshColor.x = ( sinf( x * 10.0f ) + 1.0f ) * 0.5f;    //時間ごとに変化
-    g_vMeshColor.y = ( cosf( x * 3.0f ) + 1.0f ) * 0.5f;
-    g_vMeshColor.z = ( sinf( x * 5.0f ) + 1.0f ) * 0.5f;
+    //g_vMeshColor.x = ( sinf( x * 10.0f ) + 1.0f ) * 0.5f;    //時間ごとに色の変化
+    //g_vMeshColor.y = ( cosf( x * 3.0f ) + 1.0f ) * 0.5f;
+    //g_vMeshColor.z = ( sinf( x * 5.0f ) + 1.0f ) * 0.5f;
 
     //
     // Clear the back buffer
@@ -617,25 +619,42 @@ void Render( )
     // Update variables that change once per frame
     //
     CBChangesEveryFrame cb;
-    for (int i = 1; i < 10; i = i + 2) {
-        g_World *= XMMatrixTranslation(0, 0, i);
-        cb.mWorld = XMMatrixTranspose( g_World );
-        cb.vMeshColor = g_vMeshColor;
-        g_pImmediateContext->UpdateSubresource( g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0 );
+    //for (int i = 1; i < 10; i = i + 2) {
+    //    g_World *= XMMatrixTranslation(0, 0, i);
+    //    cb.mWorld = XMMatrixTranspose( g_World );
+    //    cb.vMeshColor = g_vMeshColor;
+    //    g_pImmediateContext->UpdateSubresource( g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0 );
 
-        //
-        // Render the cube
-        //
-        g_pImmediateContext->VSSetShader( g_pVertexShader, NULL, 0 );
-        g_pImmediateContext->VSSetConstantBuffers( 0, 1, &g_pCBNeverChanges );
-        g_pImmediateContext->VSSetConstantBuffers( 1, 1, &g_pCBChangeOnResize );
-        g_pImmediateContext->VSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
-        g_pImmediateContext->PSSetShader( g_pPixelShader, NULL, 0 );
-        g_pImmediateContext->PSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
-        g_pImmediateContext->PSSetShaderResources( 0, 1, &g_pTextureRV );
-        g_pImmediateContext->PSSetSamplers( 0, 1, &g_pSamplerLinear );
-        g_pImmediateContext->DrawIndexed( 36, 0, 0 );
-    }
+    //    //
+    //    // Render the cube
+    //    //
+    //    g_pImmediateContext->VSSetShader( g_pVertexShader, NULL, 0 );
+    //    g_pImmediateContext->VSSetConstantBuffers( 0, 1, &g_pCBNeverChanges );
+    //    g_pImmediateContext->VSSetConstantBuffers( 1, 1, &g_pCBChangeOnResize );
+    //    g_pImmediateContext->VSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
+    //    g_pImmediateContext->PSSetShader( g_pPixelShader, NULL, 0 );
+    //    g_pImmediateContext->PSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
+    //    g_pImmediateContext->PSSetShaderResources( 0, 1, &g_pTextureRV );
+    //    g_pImmediateContext->PSSetSamplers( 0, 1, &g_pSamplerLinear );
+    //    g_pImmediateContext->DrawIndexed( 36, 0, 0 );
+    //}
+    g_World *= XMMatrixTranslation(0, 0, 0);
+    cb.mWorld = XMMatrixTranspose(g_World);
+    cb.vMeshColor = g_vMeshColor;
+    g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+
+    //
+    // Render the cube
+    //
+    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
+    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+    g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
+    g_pImmediateContext->DrawIndexed(36, 0, 0);
 
     //
     // Present our back buffer to our front buffer
