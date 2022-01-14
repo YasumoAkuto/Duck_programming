@@ -11,6 +11,7 @@
 #include <d3dcompiler.h>
 #include <xnamath.h>
 #include "resource.h"
+#include <vector>
 
 #define KEY_LEFT 1
 #define KEY_RIGHT 2
@@ -471,7 +472,7 @@ HRESULT InitDevice()
     if( FAILED( hr ) )
         return hr;
 
-    // Load the Texture
+    // Load the Texture テクスチャの読み込み
     hr = D3DX11CreateShaderResourceViewFromFile( g_pd3dDevice, L"stage.dds", NULL, NULL, &g_pTextureRV, NULL );
     if( FAILED( hr ) )
         return hr;
@@ -595,7 +596,7 @@ void Render( )
     if (key_input & KEY_RIGHT) x += 0.001f;
     else if (key_input & KEY_LEFT) x -= 0.001f;
 
-    g_World = XMMatrixRotationY(XM_PI / 4)  *XMMatrixTranslation(x, 0, 0);
+    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(x, -1, 0);
     //g_World = XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y回転処理(時間ごと回転)
     //g_World *= XMMatrixTranslationFromVector(translate);  //移動したかったけど、XMVECTORがよくわからん
@@ -607,7 +608,7 @@ void Render( )
     //
     // Clear the back buffer
     //
-    float ColorRGBList[3] = { 224, 255, 255 };      //0～255まで
+    float ColorRGBList[3] = { 224, 255, 255 };      //0～255まで背景色の変更
     float ClearColor[4] = { ColorRGBList[0] / 255, ColorRGBList[1] / 255, ColorRGBList[2] / 255, 1.0f }; // red, green, blue, alpha
     g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, ClearColor );
 
@@ -620,47 +621,40 @@ void Render( )
     // Update variables that change once per frame
     //
     CBChangesEveryFrame cb;
+    //キューブのいろいろ
+    int StageSize = 3;
+    int StageLevel[9] = { 
+              1,2,3,    
+              2, 3,4,
+              3,4,5 };
+    int cnt = 0;
+    for (int Wid = 0; Wid < StageSize; Wid++) {
+        for (int dep = 0; dep < StageSize; dep++) {
+            for (int Hig = 0; Hig < StageLevel[cnt]; Hig++) {
+                cb.mWorld = XMMatrixTranspose(g_World);
+                cb.vMeshColor = g_vMeshColor;
+                g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
-    //何個も表示してた時の残り
-    //for (int i = 1; i < 10; i = i + 2) {
-    //    g_World *= XMMatrixTranslation(0, 0, i);
-    //    cb.mWorld = XMMatrixTranspose( g_World );
-    //    cb.vMeshColor = g_vMeshColor;
-    //    g_pImmediateContext->UpdateSubresource( g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0 );
-
-    //    //
-    //    // Render the cube
-    //    //
-    //    g_pImmediateContext->VSSetShader( g_pVertexShader, NULL, 0 );
-    //    g_pImmediateContext->VSSetConstantBuffers( 0, 1, &g_pCBNeverChanges );
-    //    g_pImmediateContext->VSSetConstantBuffers( 1, 1, &g_pCBChangeOnResize );
-    //    g_pImmediateContext->VSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
-    //    g_pImmediateContext->PSSetShader( g_pPixelShader, NULL, 0 );
-    //    g_pImmediateContext->PSSetConstantBuffers( 2, 1, &g_pCBChangesEveryFrame );
-    //    g_pImmediateContext->PSSetShaderResources( 0, 1, &g_pTextureRV );
-    //    g_pImmediateContext->PSSetSamplers( 0, 1, &g_pSamplerLinear );
-    //    g_pImmediateContext->DrawIndexed( 36, 0, 0 );
-    //}
-
-
-
-    g_World *= XMMatrixTranslation(0, 0, 0);
-    cb.mWorld = XMMatrixTranspose(g_World);
-    cb.vMeshColor = g_vMeshColor;
-    g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
-
-    //
-    // Render the cube
-    //
-    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
-    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
-    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
-    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
-    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
-    g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
-    g_pImmediateContext->DrawIndexed(36, 0, 0);
+                //
+                // Render the cube
+                //
+                g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+                g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+                g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+                g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
+                g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
+                g_pImmediateContext->DrawIndexed(36, 0, 0);
+                g_World *= XMMatrixTranslation(0, 1, 0);
+            }
+            g_World *= XMMatrixTranslation(sqrt(2), -StageLevel[cnt], sqrt(2));    //移動
+            cnt++;
+        }
+        g_World *= XMMatrixTranslation((-StageSize - 1) *sqrt(2), 0, (-StageSize + 1) *sqrt(2));
+        //g_World *= XMMatrixTranslation(-(StageSize - 1 - (Wid + 1)) * sqrt(2), 0, -(StageSize - 1 + Wid + 1) * sqrt(2));
+    }
 
     //
     // Present our back buffer to our front buffer
