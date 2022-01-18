@@ -572,7 +572,7 @@ HRESULT InitDevice()
 
 #if 1
     //２つ目のテクスチャの読み込み
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"seafloor.dds", NULL, NULL, &g_pTextureRV2, NULL);
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"ahiru.dds", NULL, NULL, &g_pTextureRV2, NULL);
     if (FAILED(hr))
         return hr;
 #endif
@@ -704,10 +704,6 @@ void Render( )
     g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, ClearColor );
 
     //XMVECTOR translate = XMVectorSet(1.0f, 2.0f, 3.0f, );
-    // Rotate cube around the origin
-    static float x = 0;
-    if (key_input & KEY_RIGHT) x += 0.002f;
-    else if (key_input & KEY_LEFT) x -= 0.002f;
 
     g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, 0);
     //g_World = XMMatrixTranslation(x, 0, 0);
@@ -737,10 +733,10 @@ void Render( )
     //キューブのいろいろ
     int StageSize = 4;
     int StageLevel[16] = { 
-              1,2,3,4,  
-              2, 3,4,5,
-              3,4,5 ,6,
-              4,5,6,7,
+              1,1,2,3,  
+              0, 0,4,4,
+              0,4,5 ,5,
+              3,4,5,5,
     };
     int cnt = 0;
     for (int Wid = 0; Wid < StageSize; Wid++) {
@@ -778,9 +774,24 @@ void Render( )
     UINT offset2 = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer2, &stride2, &offset2);
 
+    static float x = 0;
+    if (key_input & KEY_RIGHT) x += 0.002f;
+    else if (key_input & KEY_LEFT) x -= 0.002f;
 
     // シェーダー側のデータを更新
-    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(x, 2, 0);
+    //前に進むプログラム
+    static bool KEYUP = true;
+    static int Before = 0;
+    if (key_input & KEY_UP) {
+        if (KEYUP) {
+            Before++;
+            KEYUP = false;
+        }
+    }
+    else KEYUP = true;
+
+    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(x + Before * sqrt(2), 0.5f, Before * sqrt(2));
+
     //CBChangesEveryFrame cb;
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.vMeshColor = g_vMeshColor;
