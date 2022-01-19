@@ -100,6 +100,8 @@ void CleanupDevice();
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 void KeyInput();
+int DrawStage();
+int DrawDuck();
 
 //XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
 // Create vertex buffer
@@ -694,6 +696,10 @@ void Render( )
             dwTimeStart = dwTimeCur;
         t = ( dwTimeCur - dwTimeStart ) / 1000.0f;  //時間
     }
+    //
+    // Clear the depth buffer to 1.0 (max depth)
+    //
+    g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     //----------------------------------------------------------------------
     //
@@ -703,23 +709,35 @@ void Render( )
     float ClearColor[4] = { ColorRGBList[0] / 255, ColorRGBList[1] / 255, ColorRGBList[2] / 255, 1.0f }; // red, green, blue, alpha
     g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, ClearColor );
 
+    DrawStage();    //ステージの描画
+
+    DrawDuck();
+    
     //XMVECTOR translate = XMVectorSet(1.0f, 2.0f, 3.0f, );
 
+    //
+    // Present our back buffer to our front buffer
+    //
+    g_pSwapChain->Present( 0, 0 );
+}
+
+
+/// <summary>
+/// ステージの描画
+/// </summary>
+/// <returns>0</returns>
+int DrawStage() {
     g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, 0);
     //g_World = XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y回転処理(時間ごと回転)
     //g_World *= XMMatrixTranslationFromVector(translate);  //移動したかったけど、XMVECTORがよくわからん
+
+#if 0
     // Modify the color
-    //g_vMeshColor.x = ( sinf( x * 10.0f ) + 1.0f ) * 0.5f;    //時間ごとに色の変化
-    //g_vMeshColor.y = ( cosf( x * 3.0f ) + 1.0f ) * 0.5f;
-    //g_vMeshColor.z = ( sinf( x * 5.0f ) + 1.0f ) * 0.5f;
-
-    //
-    // Clear the depth buffer to 1.0 (max depth)
-    //
-    g_pImmediateContext->ClearDepthStencilView( g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0 );
-
-    // ステージの描画
+    g_vMeshColor.x = ( sinf( x * 10.0f ) + 1.0f ) * 0.5f;    //時間ごとに色の変化
+    g_vMeshColor.y = ( cosf( x * 3.0f ) + 1.0f ) * 0.5f;
+    g_vMeshColor.z = ( sinf( x * 5.0f ) + 1.0f ) * 0.5f;
+#endif 
     //
     // Update variables that change once per frame
     //
@@ -732,8 +750,8 @@ void Render( )
     CBChangesEveryFrame cb;
     //キューブのいろいろ
     int StageSize = 4;
-    int StageLevel[16] = { 
-              1,1,2,3,  
+    int StageLevel[16] = {
+              1,1,2,3,
               0, 0,4,4,
               0,4,5 ,5,
               3,4,5,5,
@@ -763,13 +781,16 @@ void Render( )
             g_World *= XMMatrixTranslation(sqrt(2), -StageLevel[cnt], sqrt(2));    //移動
             cnt++;
         }
-        g_World *= XMMatrixTranslation((-StageSize - 1) *sqrt(2), 0, (-StageSize + 1) *sqrt(2));
+        g_World *= XMMatrixTranslation((-StageSize - 1) * sqrt(2), 0, (-StageSize + 1) * sqrt(2));
         //g_World *= XMMatrixTranslation(-(StageSize - 1 - (Wid + 1)) * sqrt(2), 0, -(StageSize - 1 + Wid + 1) * sqrt(2));
     }
 
+    return 0;
+}
 
+int DrawDuck() {
     //------------------------------------------------------------------
-    //本体の描画
+//本体の描画
     UINT stride2 = sizeof(SimpleVertex);
     UINT offset2 = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer2, &stride2, &offset2);
@@ -792,6 +813,7 @@ void Render( )
 
     g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(x + Before * sqrt(2), 0.5f, Before * sqrt(2));
 
+    CBChangesEveryFrame cb;
     //CBChangesEveryFrame cb;
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.vMeshColor = g_vMeshColor;
@@ -809,10 +831,7 @@ void Render( )
     g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
     g_pImmediateContext->DrawIndexed(36, 0, 0);
 
-    //
-    // Present our back buffer to our front buffer
-    //
-    g_pSwapChain->Present( 0, 0 );
+    return 0;
 }
 
 void KeyInput() {
