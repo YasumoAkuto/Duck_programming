@@ -727,7 +727,6 @@ void Render( )
 /// </summary>
 /// <returns>0</returns>
 int DrawStage() {
-    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, 0);
     //g_World = XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y回転処理(時間ごと回転)
     //g_World *= XMMatrixTranslationFromVector(translate);  //移動したかったけど、XMVECTORがよくわからん
@@ -751,11 +750,12 @@ int DrawStage() {
     //キューブのいろいろ
     int StageSize = 4;
     int StageLevel[16] = {
-              1,1,2,3,
-              0, 0,4,4,
-              0,4,5 ,5,
-              3,4,5,5,
+            2,2,2,1,
+            2,2,2,1,
+            2,2,2,2,
+            1,1,1,1,
     };
+    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, 3 * 2 * sqrt(2)); //最初に描くステージ
     int cnt = 0;
     for (int Wid = 0; Wid < StageSize; Wid++) {
         for (int dep = 0; dep < StageSize; dep++) {
@@ -778,16 +778,21 @@ int DrawStage() {
                 g_pImmediateContext->DrawIndexed(36, 0, 0);
                 g_World *= XMMatrixTranslation(0, 1, 0);
             }
-            g_World *= XMMatrixTranslation(sqrt(2), -StageLevel[cnt], sqrt(2));    //移動
+            g_World *= XMMatrixTranslation(sqrt(2), -StageLevel[cnt], -sqrt(2));    //移動
             cnt++;
         }
-        g_World *= XMMatrixTranslation((-StageSize - 1) * sqrt(2), 0, (-StageSize + 1) * sqrt(2));
+        g_World *= XMMatrixTranslation((-StageSize - 1) * sqrt(2), 0, (StageSize - 1) * sqrt(2));
         //g_World *= XMMatrixTranslation(-(StageSize - 1 - (Wid + 1)) * sqrt(2), 0, -(StageSize - 1 + Wid + 1) * sqrt(2));
     }
 
     return 0;
 }
 
+
+/// <summary>
+/// ひよこを描画する
+/// </summary>
+/// <returns>0</returns>
 int DrawDuck() {
     //------------------------------------------------------------------
 //本体の描画
@@ -798,6 +803,8 @@ int DrawDuck() {
     static float x = 0;
     if (key_input & KEY_RIGHT) x += 0.002f;
     else if (key_input & KEY_LEFT) x -= 0.002f;
+
+    float FirstPosition[3] = {-3 * sqrt(2),0.5f,(3 * 2 - 3) * sqrt(2)};
 
     // シェーダー側のデータを更新
     //前に進むプログラム
@@ -811,7 +818,7 @@ int DrawDuck() {
     }
     else KEYUP = true;
 
-    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(x + Before * sqrt(2), 0.5f, Before * sqrt(2));
+    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(FirstPosition[0] + x + Before * sqrt(2), FirstPosition[1], FirstPosition[2] + Before * sqrt(2));
 
     CBChangesEveryFrame cb;
     //CBChangesEveryFrame cb;
