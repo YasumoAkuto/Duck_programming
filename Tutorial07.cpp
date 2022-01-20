@@ -17,14 +17,8 @@
 #define KEY_RIGHT 2
 #define KEY_UP 4
 #define KEY_DOWN 8
-#define KEY_PAD_L 16
-#define KEY_PAD_R 32
-#define KEY_PAD_A 64
-#define KEY_PAD_B 128
-#define KEY_PAD_X 256
-#define KEY_PAD_Y 512
-#define KEY_SPACE 1024
-
+#define KEY_SPACE 16
+#define KEY_P 32
 
 //--------------------------------------------------------------------------------------
 // Structures
@@ -87,7 +81,7 @@ ID3D11ShaderResourceView*           g_pTextureRV2 = NULL;
 XMMATRIX                            g_World;
 XMMATRIX                            g_View;
 XMMATRIX                            g_Projection;
-XMFLOAT4                            g_vMeshColor( 0.7f, 0.7f, 0.7f, 1.0f );
+XMFLOAT4                            g_vMeshColor( 1.0f, 1.0f, 1.0f, 1.0f );
 int                                 key_input = 0;
 
 
@@ -844,6 +838,25 @@ int DrawDuck() {
     static int duckY = StageSize - 1;   //あひるのY座標
     static int duckZ = 0;               //あひるのZ座標
     int keyinputtrigger = KeyInputTriggerSense();
+
+#if 0
+    static int action[12] = {};
+    static int count = 0;
+    if (keyinputtrigger) {
+        if (keyinputtrigger & KEY_LEFT) action[count] = KEY_LEFT;
+        if (keyinputtrigger & KEY_RIGHT) action[count] = KEY_RIGHT;
+        if (keyinputtrigger & KEY_UP) action[count] = KEY_UP;
+        if (keyinputtrigger & KEY_SPACE) action[count] = KEY_SPACE;
+        count++;
+    }
+#endif
+
+    int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
+    int NextX = duckX + dx[move];                                   //次のX座標
+    int NextY = duckY + dy[move];                                   //次のY座標
+    int NextStageLevel = StageLevel[StageSize * NextY + NextX];     //次のステージの高さ
+
+
     if (keyinputtrigger & KEY_LEFT) {
         CharacterDirection--;   //左回転
     }
@@ -851,10 +864,6 @@ int DrawDuck() {
         CharacterDirection++;   //右回転
     }
 
-    int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
-    int NextX = duckX + dx[move];                                   //次のX座標
-    int NextY = duckY + dy[move];                                   //次のY座標
-    int NextStageLevel = StageLevel[StageSize * NextY + NextX];     //次のステージの高さ
     if (keyinputtrigger & KEY_UP) {
         if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
             //範囲外にでないようにする　範囲内にいるときだけ計算
@@ -873,6 +882,36 @@ int DrawDuck() {
     }
     duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
 
+#if 0
+    if (keyinputtrigger & KEY_P) {
+        for (int i = 0; i < 12; i++) {
+            if (action[i] & KEY_LEFT) {
+                CharacterDirection--;   //左回転
+            }
+            if (action[i] & KEY_RIGHT) {
+                CharacterDirection++;   //右回転
+            }
+            if (action[i] & KEY_UP) {
+                if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
+                    //範囲外にでないようにする　範囲内にいるときだけ計算
+                    if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
+                    if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
+                }
+            }
+            if (action[i] & KEY_SPACE) {
+                if (NextStageLevel != 0) {      //ステージがない箇所に行かないようにする
+                    //範囲外にでないようにする
+                    if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
+                    if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
+                }
+
+                //高さが同じでもジャンプ出前に行けるようにしておく
+            }
+            duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
+            
+        }
+    }
+#endif
 
     
 
@@ -906,13 +945,12 @@ int DrawDuck() {
 /// </summary>
 void KeyInput() {
     key_input = 0;
-    if (GetAsyncKeyState('A') & 0x8000) key_input |= KEY_LEFT;
-    if (GetAsyncKeyState('D') & 0x8000) key_input |= KEY_RIGHT;
-    if (GetAsyncKeyState('W') & 0x8000) key_input |= KEY_UP;
-    if (GetAsyncKeyState('S') & 0x8000) key_input |= KEY_DOWN;
-    if (GetAsyncKeyState('Q') & 0x8000) key_input |= KEY_PAD_L;
-    if (GetAsyncKeyState('E') & 0x8000) key_input |= KEY_PAD_R;
-    if (GetAsyncKeyState(' ') & 0x8000) key_input |= KEY_SPACE;
+    if (GetAsyncKeyState('A') & 0x8000)         key_input |= KEY_LEFT;
+    if (GetAsyncKeyState('D') & 0x8000)         key_input |= KEY_RIGHT;
+    if (GetAsyncKeyState('W') & 0x8000)         key_input |= KEY_UP;
+    if (GetAsyncKeyState('S') & 0x8000)         key_input |= KEY_DOWN;
+    if (GetAsyncKeyState(' ') & 0x8000)         key_input |= KEY_SPACE;
+    if (GetAsyncKeyState('P') & 0x8000)         key_input != KEY_P;
 }
 
 /// <summary>
@@ -926,9 +964,8 @@ int KeyInputTriggerSense() {
     if (key_input & KEY_RIGHT)  if (!(beforeKeyInput2 & KEY_RIGHT)) key_input_triggersense |= KEY_RIGHT; //右一回だけ
     if (key_input & KEY_UP)     if (!(beforeKeyInput2 & KEY_UP))    key_input_triggersense |= KEY_UP; 
     if (key_input & KEY_DOWN)   if (!(beforeKeyInput2 & KEY_DOWN))  key_input_triggersense |= KEY_DOWN;
-    if (key_input & KEY_PAD_L)  if (!(beforeKeyInput2 & KEY_PAD_L)) key_input_triggersense |= KEY_PAD_L; 
-    if (key_input & KEY_PAD_R)  if (!(beforeKeyInput2 & KEY_PAD_R)) key_input_triggersense |= KEY_PAD_R;
-    if (key_input & KEY_SPACE)  if (!(beforeKeyInput2 & KEY_SPACE)) key_input_triggersense |= KEY_SPACE; 
+    if (key_input & KEY_SPACE)  if (!(beforeKeyInput2 & KEY_SPACE)) key_input_triggersense |= KEY_SPACE;
+    if (key_input & KEY_P)      if (!(beforeKeyInput2 & KEY_P))     key_input_triggersense |= KEY_P;
     beforeKeyInput2 = key_input;
     return key_input_triggersense;
 }
