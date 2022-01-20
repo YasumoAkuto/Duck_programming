@@ -100,6 +100,7 @@ void CleanupDevice();
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 void KeyInput();
+int KeyInputTriggerSense();
 int DrawStage();
 int DrawDuck();
 
@@ -136,6 +137,15 @@ SimpleVertex vertices[] =
     { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(-1.0f, 0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+};
+
+//ステージデータ
+int StageSize = 4;
+int StageLevel[16] = {
+        2,2,2,1,
+        2,1,1,0,
+        2,1,2,0,
+        1,1,1,1,
 };
 
 //--------------------------------------------------------------------------------------
@@ -748,13 +758,7 @@ int DrawStage() {
 
     CBChangesEveryFrame cb;
     //キューブのいろいろ
-    int StageSize = 4;
-    int StageLevel[16] = {
-            2,2,2,1,
-            2,2,2,1,
-            2,2,2,2,
-            1,1,1,1,
-    };
+
     g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, 3 * 2 * sqrt(2)); //最初に描くステージ
     int cnt = 0;
     for (int Wid = 0; Wid < StageSize; Wid++) {
@@ -798,15 +802,11 @@ int DrawDuck() {
 //本体の描画
     UINT stride2 = sizeof(SimpleVertex);
     UINT offset2 = 0;
-    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer2, &stride2, &offset2);
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer2, &stride2, &offset2);   //頂点バッファをセットする
 
-    static float x = 0;
-    if (key_input & KEY_RIGHT) x += 0.002f;
-    else if (key_input & KEY_LEFT) x -= 0.002f;
+    float FirstPosition[3] = { 0 , -0.5f, (StageSize - 1) * 2};
 
-    float FirstPosition[3] = {-3 * sqrt(2),0.5f,(3 * 2 - 3) * sqrt(2)};
-
-    // シェーダー側のデータを更新
+#if 0
     //前に進むプログラム
     static bool KEYUP = true;
     static int Before = 0;
@@ -818,7 +818,67 @@ int DrawDuck() {
     }
     else KEYUP = true;
 
-    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(FirstPosition[0] + x + Before * sqrt(2), FirstPosition[1], FirstPosition[2] + Before * sqrt(2));
+#elif 0
+
+    static int BeforeKeyInput = 0;
+
+    if (key_input & KEY_DOWN) {
+        if (key_input & KEY_DOWN & BeforeKeyInput) {
+
+        }
+        else Before--;
+    }
+    BeforeKeyInput = key_input;
+#endif
+    //座標系ステージの一番奥を(0,0)にする右斜め下X正、左斜め下Y正
+    //プレイヤーをステージの上で動かす
+    //キャラクターの向きを持つデータをmod4で
+    static int CharacterDirection = 100000; //4の倍数じゃないとだめ,あひるのむきを計算
+    int Mod = 4;
+
+    //前後左右を計算しやすくするためのデータ
+    const int dx[4] = { 1, 0, -1,  0};
+    const int dy[4] = { 0, 1,  0, -1};
+
+    static int duckX = 0;               //あひるのX座標
+    static int duckY = StageSize - 1;   //あひるのY座標
+    static int duckZ = 0;               //あひるのZ座標
+    int keyinputtrigger = KeyInputTriggerSense();
+    if (keyinputtrigger & KEY_LEFT) {
+        CharacterDirection--;   //左回転
+    }
+    if (keyinputtrigger & KEY_RIGHT) {
+        CharacterDirection++;   //右回転
+    }
+
+    int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
+    int NextX = duckX + dx[move];                                   //次のX座標
+    int NextY = duckY + dy[move];                                   //次のY座標
+    int NextStageLevel = StageLevel[StageSize * NextY + NextX];     //次のステージの高さ
+    if (keyinputtrigger & KEY_UP) {
+        if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
+            //範囲外にでないようにする　範囲内にいるときだけ計算
+            if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
+            if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
+        }
+    }
+    if (keyinputtrigger & KEY_SPACE) {
+        if (NextStageLevel != 0) {      //ステージがない箇所に行かないようにする
+            //範囲外にでないようにする
+            if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
+            if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
+        }
+
+        //高さが同じでもジャンプ出前に行けるようにしておく
+    }
+    duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
+
+
+    
+
+    float DuckPosition[3] = { FirstPosition[0] + duckX - duckY, FirstPosition[1] + duckZ, FirstPosition[2] - duckX - duckY };   //あひるの位置
+
+    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(DuckPosition[0] * sqrt(2), DuckPosition[1], DuckPosition[2] * sqrt(2));
 
     CBChangesEveryFrame cb;
     //CBChangesEveryFrame cb;
@@ -841,6 +901,9 @@ int DrawDuck() {
     return 0;
 }
 
+/// <summary>
+/// キー入力をとる。
+/// </summary>
 void KeyInput() {
     key_input = 0;
     if (GetAsyncKeyState('A') & 0x8000) key_input |= KEY_LEFT;
@@ -851,3 +914,22 @@ void KeyInput() {
     if (GetAsyncKeyState('E') & 0x8000) key_input |= KEY_PAD_R;
     if (GetAsyncKeyState(' ') & 0x8000) key_input |= KEY_SPACE;
 }
+
+/// <summary>
+/// トリガセンスのキー入力を返す
+/// </summary>
+/// <returns>key_input_triggersense</returns>
+int KeyInputTriggerSense() {
+    static int beforeKeyInput2 = 0;
+    int key_input_triggersense = 0;
+    if (key_input & KEY_LEFT)   if (!(beforeKeyInput2 & KEY_LEFT))  key_input_triggersense |= KEY_LEFT; 
+    if (key_input & KEY_RIGHT)  if (!(beforeKeyInput2 & KEY_RIGHT)) key_input_triggersense |= KEY_RIGHT; //右一回だけ
+    if (key_input & KEY_UP)     if (!(beforeKeyInput2 & KEY_UP))    key_input_triggersense |= KEY_UP; 
+    if (key_input & KEY_DOWN)   if (!(beforeKeyInput2 & KEY_DOWN))  key_input_triggersense |= KEY_DOWN;
+    if (key_input & KEY_PAD_L)  if (!(beforeKeyInput2 & KEY_PAD_L)) key_input_triggersense |= KEY_PAD_L; 
+    if (key_input & KEY_PAD_R)  if (!(beforeKeyInput2 & KEY_PAD_R)) key_input_triggersense |= KEY_PAD_R;
+    if (key_input & KEY_SPACE)  if (!(beforeKeyInput2 & KEY_SPACE)) key_input_triggersense |= KEY_SPACE; 
+    beforeKeyInput2 = key_input;
+    return key_input_triggersense;
+}
+
