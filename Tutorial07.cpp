@@ -7,21 +7,21 @@
 //--------------------------------------------------------------------------------------
 #include <windows.h>
 #include <d3d11.h>
+//d3d11.hはいらないかも
 #include <d3dx11.h>
 #include <d3dcompiler.h>
 #include <xnamath.h>
+//xnamath.hはあんまりよくないのかも
 #include "resource.h"
-#include <vector>
 
 #define KEY_LEFT 1
 #define KEY_RIGHT 2
 #define KEY_UP 4
-#define KEY_DOWN 8
-#define KEY_SPACE 16
+#define KEY_SPACE 8
+#define KEY_E 16
 #define KEY_P 32
 #define KEY_1 64
 #define KEY_2 128
-#define KEY_E 256
 
 //--------------------------------------------------------------------------------------
 // Structures
@@ -138,8 +138,8 @@ SimpleVertex vertices[] =
 };
 
 //ステージデータ
-int StageSize = 6;
-int StageLevel[36] = 
+const int StageSize = 6;
+const int StageLevel[36] = 
 {
         2,2,2,1,1,1,
         2,1,1,0,0,0,
@@ -153,18 +153,13 @@ int StageLevel[36] =
 int CharacterDirection = 100000; //4の倍数じゃないとだめ,あひるのむきを計算
 const int Mod = 4;
 
-//前後左右を計算しやすくするためのデータ
-const int dx[4] = { 1, 0, -1,  0 };
-const int dy[4] = { 0, 1,  0, -1 };
+
 
 int duckX = 0;               //ひよこのX座標
 int duckY = StageSize - 1;   //ひよこのY座標
 int duckZ = 0;               //ひよこのZ座標
 
-int DuckActionMain[12] = {};        //アクションを保存する配列
-int DuckActionPattern1[8] = {};     //パターンアクションを保存する配列
-bool Pattern1Flag = false;
-int CountPattern1Play = 0;
+
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -836,19 +831,9 @@ int DrawDuck() {
         }
     }
     else KEYUP = true;
-
-#elif 0
-
-    static int BeforeKeyInput = 0;
-
-    if (key_input & KEY_DOWN) {
-        if (key_input & KEY_DOWN & BeforeKeyInput) {
-
-        }
-        else Before--;
-    }
-    BeforeKeyInput = key_input;
 #endif
+
+
     //座標系ステージの一番奥を(0,0)にする右斜め下X正、左斜め下Y正
     //プレイヤーをステージの上で動かす
 
@@ -871,7 +856,9 @@ int DrawDuck() {
     if (keyinputtrigger & KEY_1) duckActionMenu = KEY_1;
     if (keyinputtrigger & KEY_2) duckActionMenu = KEY_2;
 
-
+    static int DuckActionMain[12] = {};        //アクションを保存する配列
+    static int DuckActionPattern1[8] = {};     //パターンアクションを保存する配列
+    static int CountPattern1Play = 0;
     static int mainCount = 0;      
     static int pattern1Count = 0;
 #if 0
@@ -890,11 +877,13 @@ int DrawDuck() {
         case KEY_1:
             if (mainCount < 12) {   //12個まで入れられるように
                 if (keyinputtrigger) {
-                    if (keyinputtrigger & KEY_LEFT)     DuckActionMain[mainCount] = KEY_LEFT;
-                    if (keyinputtrigger & KEY_RIGHT)    DuckActionMain[mainCount] = KEY_RIGHT;
-                    if (keyinputtrigger & KEY_UP)       DuckActionMain[mainCount] = KEY_UP;
-                    if (keyinputtrigger & KEY_SPACE)    DuckActionMain[mainCount] = KEY_SPACE;
-                    if (keyinputtrigger & KEY_E)        DuckActionMain[mainCount] = KEY_E;
+                    //elseにしないとない部分の配列も参照しちゃう
+                    if (keyinputtrigger & KEY_LEFT)         DuckActionMain[mainCount] = KEY_LEFT;
+                    else if (keyinputtrigger & KEY_RIGHT)   DuckActionMain[mainCount] = KEY_RIGHT;
+                    else if (keyinputtrigger & KEY_UP)      DuckActionMain[mainCount] = KEY_UP;
+                    else if (keyinputtrigger & KEY_SPACE)   DuckActionMain[mainCount] = KEY_SPACE;
+                    else if (keyinputtrigger & KEY_E)       DuckActionMain[mainCount] = KEY_E;
+                    else mainCount--;
                     mainCount++;
                 }
             }
@@ -903,9 +892,10 @@ int DrawDuck() {
             if (pattern1Count < 8) {   //8個まで入れられるように
                 if (keyinputtrigger) {
                     if (keyinputtrigger & KEY_LEFT) DuckActionPattern1[pattern1Count] = KEY_LEFT;
-                    if (keyinputtrigger & KEY_RIGHT) DuckActionPattern1[pattern1Count] = KEY_RIGHT;
-                    if (keyinputtrigger & KEY_UP) DuckActionPattern1[pattern1Count] = KEY_UP;
-                    if (keyinputtrigger & KEY_SPACE) DuckActionPattern1[pattern1Count] = KEY_SPACE;
+                    else if (keyinputtrigger & KEY_RIGHT) DuckActionPattern1[pattern1Count] = KEY_RIGHT;
+                    else if (keyinputtrigger & KEY_UP) DuckActionPattern1[pattern1Count] = KEY_UP;
+                    else if (keyinputtrigger & KEY_SPACE) DuckActionPattern1[pattern1Count] = KEY_SPACE;
+                    else pattern1Count--;
                     pattern1Count++;
                 }
             }
@@ -950,7 +940,22 @@ int DrawDuck() {
 #if 1
         if (countPlay < 12) {   //12個までしか保存してない
             if (beforeTime + FlameTime < time) {    //以前実行したものから
-                PlayDuckAction(DuckActionMain,countPlay);
+                if (DuckActionMain[countPlay] & KEY_E) {
+                    PlayDuckAction(DuckActionPattern1, CountPattern1Play);
+                    CountPattern1Play++;
+                    if (CountPattern1Play >= 8) {           //配列の一番最後に0入れるとかでもいいかも？
+                        countPlay++;
+                        CountPattern1Play = 0;
+                    }
+                    else if (DuckActionPattern1[CountPattern1Play] == 0) {  //配列の中がなにもないとき
+                        countPlay++;
+                        CountPattern1Play = 0;
+                    }
+                }
+                else {
+                    PlayDuckAction(DuckActionMain,countPlay);
+                    countPlay++;
+                }
 #if 0
                 int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
                 int NextX = duckX + dx[move];                                   //次のX座標
@@ -981,19 +986,6 @@ int DrawDuck() {
                 }
 #endif
 
-                if (Pattern1Flag) {
-                    if (CountPattern1Play < 8) {
-                        PlayDuckAction(DuckActionPattern1, CountPattern1Play);
-                        CountPattern1Play++;
-                        if (CountPattern1Play == 8) {
-                            CountPattern1Play = 0;
-                            Pattern1Flag = false;
-                        }
-                    }
-                }
-                else {
-                    countPlay++;
-                }
                 //duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算　ここはなくてもいい
                 beforeTime = time;
             }
@@ -1036,9 +1028,9 @@ int DrawDuck() {
     }
 #endif
 
-    duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
+    duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算 
 
-    
+
 
     float DuckPosition[3] = { FirstPosition[0] + duckX - duckY, FirstPosition[1] + duckZ, FirstPosition[2] - duckX - duckY };   //あひるの位置
 
@@ -1073,7 +1065,6 @@ void KeyInput() {
     if (GetAsyncKeyState('A') & 0x8000)         key_input |= KEY_LEFT;
     if (GetAsyncKeyState('D') & 0x8000)         key_input |= KEY_RIGHT;
     if (GetAsyncKeyState('W') & 0x8000)         key_input |= KEY_UP;
-    if (GetAsyncKeyState('S') & 0x8000)         key_input |= KEY_DOWN;
     if (GetAsyncKeyState(' ') & 0x8000)         key_input |= KEY_SPACE;
     if (GetAsyncKeyState('P') & 0x8000)         key_input |= KEY_P;
     if (GetAsyncKeyState('1') & 0x8000)         key_input |= KEY_1;
@@ -1091,7 +1082,6 @@ int KeyInputTriggerSense() {
     if (key_input & KEY_LEFT)   if (!(beforeKeyInput2 & KEY_LEFT))  key_input_triggersense |= KEY_LEFT; 
     if (key_input & KEY_RIGHT)  if (!(beforeKeyInput2 & KEY_RIGHT)) key_input_triggersense |= KEY_RIGHT; //右一回だけ
     if (key_input & KEY_UP)     if (!(beforeKeyInput2 & KEY_UP))    key_input_triggersense |= KEY_UP; 
-    if (key_input & KEY_DOWN)   if (!(beforeKeyInput2 & KEY_DOWN))  key_input_triggersense |= KEY_DOWN;
     if (key_input & KEY_SPACE)  if (!(beforeKeyInput2 & KEY_SPACE)) key_input_triggersense |= KEY_SPACE;
     if (key_input & KEY_P)      if (!(beforeKeyInput2 & KEY_P))     key_input_triggersense |= KEY_P;
     if (key_input & KEY_1)      if (!(beforeKeyInput2 & KEY_1))     key_input_triggersense |= KEY_1;
@@ -1107,15 +1097,14 @@ int KeyInputTriggerSense() {
 /// <param name="duck_action">アクションの配列</param>
 /// <param name="action_list_index">実行したい配列のインデックス</param>
 void PlayDuckAction(int *duck_action, int action_list_index) {
+    //前後左右を計算しやすくするためのデータ
+    const int dx[4] = { 1, 0, -1,  0 };
+    const int dy[4] = { 0, 1,  0, -1 };
+
     int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
     int NextX = duckX + dx[move];                                   //次のX座標
     int NextY = duckY + dy[move];                                   //次のY座標
     int NextStageLevel = StageLevel[StageSize * NextY + NextX];     //次のステージの高さ
-
-    
-    if (duck_action[action_list_index] & KEY_E) {
-        Pattern1Flag = true;
-    }
 
     if (duck_action[action_list_index] & KEY_LEFT) {
         CharacterDirection--;   //左回転
@@ -1139,5 +1128,6 @@ void PlayDuckAction(int *duck_action, int action_list_index) {
 
         //高さが同じでもジャンプで前進できるようにしておく
     }
+
 }
 
