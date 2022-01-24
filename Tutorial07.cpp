@@ -29,6 +29,7 @@
 struct SimpleVertex
 {
     XMFLOAT3 Pos;
+    XMFLOAT3 Normal;
     XMFLOAT2 Tex;
 };
 
@@ -46,6 +47,8 @@ struct CBChangesEveryFrame
 {
     XMMATRIX mWorld;
     XMFLOAT4 vMeshColor;
+    XMFLOAT4 vLightDir;
+    XMFLOAT4 vLightColor;
 };
 
 //--------------------------------------------------------------------------------------
@@ -106,35 +109,35 @@ void PlayDuckAction(int* duck_action, int action_list_index);
 // Create vertex buffer
 SimpleVertex vertices[] =
 {
-    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-    { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-    { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-    { XMFLOAT3(-1.0f, 0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+    { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, 1.0f),  XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-    { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-    { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-    { XMFLOAT3(-1.0f, -0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(1.0f, -0.5f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+    { XMFLOAT3(1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-    { XMFLOAT3(-1.0f, -0.5f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-    { XMFLOAT3(-1.0f, 0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, -1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),XMFLOAT2(1.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-    { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-    { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-    { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+    { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+    { XMFLOAT3(1.0f, 0.5f, -1.0f),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+    { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f),XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-    { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-    { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+    { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, -1.0f),  XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-    { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
-    { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-    { XMFLOAT3(-1.0f, 0.5f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
+    { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f),XMFLOAT2(1.0f, 1.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
 };
 
 //ステージデータ
@@ -409,7 +412,8 @@ HRESULT InitDevice()
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
     };
     UINT numElements = ARRAYSIZE( layout );
 
@@ -448,39 +452,39 @@ HRESULT InitDevice()
 
     //----------------------------------------------------------------------
     // 動かしたい本体の頂点データ
-    // XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
+    // XMFLOAT3(幅、高さ、奥行),XMFLOAT3(法線ベクトル),XMFLOAT2(テクスチャー)
     // Create vertex buffer
     SimpleVertex vertices2[] =
     {
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f, 1.0f, 1.0f),XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, 1.0f),XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f, -1.0f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f, -1.0f, 1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, 1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, 1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, -1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, 1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(1.0f, -1.0f, 1.0f),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f, -1.0f, -1.0f),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f, 1.0f, -1.0f),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(1.0f, 1.0f, 1.0f),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f, -1.0f, -1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f, 1.0f, -1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, -1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f, -1.0f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f, 1.0f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
     };
 
     //-------------------------------------------------------------------
@@ -775,11 +779,16 @@ int DrawStage() {
 
     g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, (StageSize - 1) * 2 * sqrt(2)); //最初に描くステージ
     int cnt = 0;
-    for (int Wid = 0; Wid < StageSize; Wid++) {
-        for (int dep = 0; dep < StageSize; dep++) {
+    for (int Dep = 0; Dep < StageSize; Dep++) {
+        for (int Wid = 0; Wid < StageSize; Wid++) {
             for (int Hig = 0; Hig < StageLevel[cnt]; Hig++) {
+                int StageBoxPos[3] = { Wid - Dep, Hig -1, (StageSize - 1) * 2 - Wid - Dep}; //x,y,z
+
+                g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(StageBoxPos[0] * sqrt(2), StageBoxPos[1], StageBoxPos[2] * sqrt(2));
                 cb.mWorld = XMMatrixTranspose(g_World);
                 cb.vMeshColor = g_vMeshColor;
+                cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.3f, 1.0f);
+                cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
                 g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
                 //
@@ -794,13 +803,9 @@ int DrawStage() {
                 g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
                 g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
                 g_pImmediateContext->DrawIndexed(36, 0, 0);
-                g_World *= XMMatrixTranslation(0, 1, 0);
             }
-            g_World *= XMMatrixTranslation(sqrt(2), -StageLevel[cnt], -sqrt(2));    //移動
             cnt++;
         }
-        g_World *= XMMatrixTranslation((-StageSize - 1) * sqrt(2), 0, (StageSize - 1) * sqrt(2));
-        //g_World *= XMMatrixTranslation(-(StageSize - 1 - (Wid + 1)) * sqrt(2), 0, -(StageSize - 1 + Wid + 1) * sqrt(2));
     }
 
     return 0;
@@ -1040,6 +1045,8 @@ int DrawDuck() {
     //CBChangesEveryFrame cb;
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.vMeshColor = g_vMeshColor;
+    cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.5f, 1.0f);
+    cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
     g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
     //
