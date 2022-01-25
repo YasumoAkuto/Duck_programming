@@ -22,6 +22,19 @@
 #define KEY_P 32
 #define KEY_1 64
 #define KEY_2 128
+#define KEY_B 256
+
+enum class eScene {
+    TITLE,      //0
+    SELECT,     //1
+    GAME,       //2
+    CLEAR,      //3
+
+    NONE        
+};
+
+static eScene mScene = eScene::GAME;
+static eScene mNextScene = eScene::NONE;
 
 //--------------------------------------------------------------------------------------
 // Structures
@@ -79,8 +92,12 @@ ID3D11SamplerState*                 g_pSamplerLinear = NULL;
 ID3D11VertexShader*                 g_pVertexShader2 = NULL;
 ID3D11PixelShader*                  g_pPixelShader2 = NULL;
 ID3D11Buffer*                       g_pVertexBuffer2 = NULL;
-ID3D11Buffer*                       g_pIndexBuffer2 = NULL;
+//ID3D11Buffer*                       g_pIndexBuffer2 = NULL;    //同じの使ってるからいらないわ
 ID3D11ShaderResourceView*           g_pTextureRV2 = NULL;
+
+//ひよこの頭用
+ID3D11Buffer*                       g_pVertexBuffer3 = NULL;
+//ID3D11Buffer*                     g_pIndexBuffer3 = NULL;      //同じの使ってるからいらないわ
 
 
 XMMATRIX                            g_World;
@@ -89,6 +106,7 @@ XMMATRIX                            g_Projection;
 XMFLOAT4                            g_vMeshColor( 1.0f, 1.0f, 1.0f, 1.0f );
 int                                 key_input = 0;
 float                               time = 0.0f;
+
 
 
 //--------------------------------------------------------------------------------------
@@ -104,6 +122,7 @@ int KeyInputTriggerSense();
 int DrawStage();
 int DrawDuck();
 void PlayDuckAction(int* duck_action, int action_list_index);
+void SceneManagement();
 
 //XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
 // Create vertex buffer
@@ -521,6 +540,56 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
+    RatioX = 2.0f;
+    RatioY = 2.0f;
+    RatioZ = 2.0f;
+
+    SimpleVertex vertices3[] =
+    {
+        { XMFLOAT3(-1.0f / RatioX, 1.0f / RatioY, -1.0f / RatioZ), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, 1.0f / RatioY, -1.0f / RatioZ), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, 1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f / RatioX, 1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+
+        { XMFLOAT3(-1.0f / RatioX, -1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, -1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, -1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f / RatioX, -1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+
+        { XMFLOAT3(-1.0f / RatioX, -1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(-1.0f / RatioX, -1.0f / RatioY, -1.0f / RatioZ), XMFLOAT3(-1.0f, 0.0f, 0.0f),XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(-1.0f / RatioX, 1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f / RatioX, 1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+
+        { XMFLOAT3(1.0f / RatioX, -1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, -1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, 1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(1.0f / RatioX, 1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
+
+        { XMFLOAT3(-1.0f / RatioX, -1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, -1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, 1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f / RatioX, 1.0f / RatioY, -1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f) },
+
+        { XMFLOAT3(-1.0f / RatioX, -1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, -1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
+        { XMFLOAT3(1.0f / RatioX, 1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f / RatioX, 1.0f / RatioY, 1.0f / RatioZ),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
+    };
+
+
+    ZeroMemory(&bd, sizeof(bd));
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(SimpleVertex) * 24;
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    D3D11_SUBRESOURCE_DATA InitData3;
+    ZeroMemory(&InitData3, sizeof(InitData3));
+    InitData3.pSysMem = vertices3;
+    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData3, &g_pVertexBuffer3);
+    if (FAILED(hr))
+        return hr;
+
 #if 0
     // Set vertex buffer
     UINT stride = sizeof( SimpleVertex );
@@ -566,6 +635,7 @@ HRESULT InitDevice()
     // Set index buffer
     g_pImmediateContext->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0 );
 
+#if 0 //これ使ってないからいらないわ
     // ２つ目の、頂点インデックス設定
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(WORD) * 36;
@@ -575,6 +645,17 @@ HRESULT InitDevice()
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer2);
     if (FAILED(hr))
         return hr;
+
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(WORD) * 36;
+    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    InitData.pSysMem = indices;
+    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer3);
+    if (FAILED(hr))
+        return hr;
+#endif
+
 
     // Set primitive topology
     g_pImmediateContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
@@ -680,6 +761,9 @@ void CleanupDevice()
     if (g_pVertexShader2) g_pVertexShader2->Release();
     if (g_pPixelShader2) g_pPixelShader2->Release();
 
+    if (g_pVertexBuffer3) g_pVertexBuffer3->Release();
+   
+
 }
 
 
@@ -742,9 +826,9 @@ void Render( )
     float ClearColor[4] = { ColorRGBList[0] / 255, ColorRGBList[1] / 255, ColorRGBList[2] / 255, 1.0f }; // red, green, blue, alpha
     g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, ClearColor );
 
-    DrawStage();    //ステージの描画
+    SceneManagement();
 
-    DrawDuck();
+
     
     //XMVECTOR translate = XMVectorSet(1.0f, 2.0f, 3.0f, );
 
@@ -828,7 +912,7 @@ int DrawDuck() {
     UINT offset2 = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer2, &stride2, &offset2);   //頂点バッファをセットする
 
-    float FirstPosition[3] = { 0 , -0.5f, (StageSize - 1) * 2};
+    float FirstPosition[3] = { 0 , -0.86f, (StageSize - 1) * 2};
 
 #if 0
     //前に進むプログラム
@@ -893,8 +977,20 @@ int DrawDuck() {
                     else if (keyinputtrigger & KEY_UP)      DuckActionMain[mainCount] = KEY_UP;
                     else if (keyinputtrigger & KEY_SPACE)   DuckActionMain[mainCount] = KEY_SPACE;
                     else if (keyinputtrigger & KEY_E)       DuckActionMain[mainCount] = KEY_E;
+                    else if (keyinputtrigger & KEY_B) {             //一個前を取り消し
+                        if (mainCount >= 1) {
+                            DuckActionMain[mainCount - 1] = 0;
+                            mainCount -= 2;
+                        }
+                    }
                     else mainCount--;
                     mainCount++;
+                }
+            }
+            else {
+                if (keyinputtrigger & KEY_B) {          //全部埋まってるときに取り消し
+                    DuckActionMain[mainCount - 1] = 0;
+                    mainCount -= 1;
                 }
             }
             break;
@@ -905,8 +1001,20 @@ int DrawDuck() {
                     else if (keyinputtrigger & KEY_RIGHT) DuckActionPattern1[pattern1Count] = KEY_RIGHT;
                     else if (keyinputtrigger & KEY_UP) DuckActionPattern1[pattern1Count] = KEY_UP;
                     else if (keyinputtrigger & KEY_SPACE) DuckActionPattern1[pattern1Count] = KEY_SPACE;
+                    else if (keyinputtrigger & KEY_B) {
+                        if (pattern1Count >= 1) {
+                            DuckActionPattern1[pattern1Count - 1] = 0;
+                            pattern1Count -= 2;
+                        }
+                    }
                     else pattern1Count--;
                     pattern1Count++;
+                }
+            }
+            else {
+                if (keyinputtrigger & KEY_B) {
+                    DuckActionPattern1[pattern1Count - 1] = 0;
+                    pattern1Count -= 1;
                 }
             }
             break;
@@ -965,7 +1073,8 @@ int DrawDuck() {
                 else {
                     PlayDuckAction(DuckActionMain,countPlay);
                     countPlay++;
-                    if (DuckActionMain[countPlay] == 0) {
+                    if (countPlay >= 12) {}
+                    else if (DuckActionMain[countPlay] == 0) {
                         PlayFlag = false;
                         countPlay = 0;
                     }
@@ -1072,6 +1181,33 @@ int DrawDuck() {
     g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
     g_pImmediateContext->DrawIndexed(36, 0, 0);
 
+
+
+    //あひるの頭の部分の描画
+    UINT stride3 = sizeof(SimpleVertex);
+    UINT offset3 = 0;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer3, &stride3, &offset3);   //頂点バッファをセットする
+
+    g_World = XMMatrixRotationZ(XM_PI / 2) * XMMatrixTranslation(0.6f, 0,0) * XMMatrixRotationY(DuckDir) * XMMatrixTranslation(DuckPosition[0] * sqrt(2), DuckPosition[1] + 1.1666f, DuckPosition[2] * sqrt(2));
+
+    cb.mWorld = XMMatrixTranspose(g_World);
+    cb.vMeshColor = g_vMeshColor;
+    cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.5f, 1.0f);
+    cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+
+    //
+    // Render the cube
+    //
+    g_pImmediateContext->VSSetShader(g_pVertexShader2, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShader(g_pPixelShader2, NULL, 0);
+    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
+    g_pImmediateContext->DrawIndexed(36, 0, 0);
+
     return 0;
 }
 
@@ -1088,6 +1224,7 @@ void KeyInput() {
     if (GetAsyncKeyState('1') & 0x8000)         key_input |= KEY_1;
     if (GetAsyncKeyState('2') & 0x8000)         key_input |= KEY_2;
     if (GetAsyncKeyState('E') & 0x8000)         key_input |= KEY_E;
+    if (GetAsyncKeyState('B') & 0x8000)         key_input |= KEY_B;
 }
 
 /// <summary>
@@ -1105,6 +1242,7 @@ int KeyInputTriggerSense() {
     if (key_input & KEY_1)      if (!(beforeKeyInput2 & KEY_1))     key_input_triggersense |= KEY_1;
     if (key_input & KEY_2)      if (!(beforeKeyInput2 & KEY_2))     key_input_triggersense |= KEY_2;
     if (key_input & KEY_E)      if (!(beforeKeyInput2 & KEY_E))     key_input_triggersense |= KEY_E;
+    if (key_input & KEY_B)      if (!(beforeKeyInput2 & KEY_B))     key_input_triggersense |= KEY_B;
     beforeKeyInput2 = key_input;
     return key_input_triggersense;
 }
@@ -1147,5 +1285,32 @@ void PlayDuckAction(int *duck_action, int action_list_index) {
         //高さが同じでもジャンプで前進できるようにしておく
     }
 
+}
+
+/// <summary>
+/// シーン管理を行う関数
+/// </summary>
+void SceneManagement() {
+    if (mNextScene != eScene::NONE) {   //次のシーンがセットされていれば
+        mScene = mNextScene;            //次のシーンをセットする
+        mNextScene = eScene::NONE;      //次のシーン情報をクリア
+    }
+
+    switch (mScene) {
+    case eScene::TITLE:
+
+        break;
+    case eScene::SELECT:
+
+        break;
+    case eScene::GAME:
+        DrawStage();    //ステージの描画
+        DrawDuck();
+
+        break;
+    case eScene::CLEAR:
+
+        break;
+    }
 }
 
