@@ -33,7 +33,7 @@ enum class eScene {
     NONE        
 };
 
-static eScene mScene = eScene::GAME;
+static eScene mScene = eScene::TITLE;
 static eScene mNextScene = eScene::NONE;
 
 //--------------------------------------------------------------------------------------
@@ -100,6 +100,14 @@ ID3D11Buffer*                       g_pVertexBuffer3 = NULL;
 //ID3D11Buffer*                     g_pIndexBuffer3 = NULL;      //同じの使ってるからいらないわ
 
 
+ID3D11VertexShader*                 g_pVertexShader4 = NULL;
+ID3D11PixelShader*                  g_pPixelShader4 = NULL;
+ID3D11Buffer*                       g_pVertexBuffer4 = NULL;
+ID3D11Buffer*                       g_pIndexBuffer4 = NULL;     //ここは使ったほうがいいかも
+ID3D11ShaderResourceView*           g_pTextureRV4 = NULL;
+
+
+
 XMMATRIX                            g_World;
 XMMATRIX                            g_View;
 XMMATRIX                            g_Projection;
@@ -123,37 +131,41 @@ int DrawStage();
 int DrawDuck();
 void PlayDuckAction(int* duck_action, int action_list_index);
 void SceneManagement();
+void ChangeTitleScene();
+int RenderTitleScene();
+int SetViewDir();
+
 
 //XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
 // Create vertex buffer
 SimpleVertex vertices[] =
 {
-    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) }, //上面
     { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(-1.0f, 0.5f, 1.0f),  XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },//下面
     { XMFLOAT3(1.0f, -0.5f, -1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) }, //左
     { XMFLOAT3(-1.0f, -0.5f, -1.0f),XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(-1.0f, 0.5f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f),XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(-1.0f, 0.5f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(1.0f, -0.5f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f) },  //右
     { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(1.0f, 0.5f, -1.0f),XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f),XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f) },//手前
     { XMFLOAT3(1.0f, -0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(1.0f, 0.5f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(-1.0f, 0.5f, -1.0f),  XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 1.0f) },
 
-    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },
+    { XMFLOAT3(-1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) },  //奥
     { XMFLOAT3(1.0f, -0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(1.0f, 0.0f) },
     { XMFLOAT3(1.0f, 0.5f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f),XMFLOAT2(1.0f, 1.0f) },
     { XMFLOAT3(-1.0f, 0.5f, 1.0f),XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) },
@@ -412,7 +424,7 @@ HRESULT InitDevice()
         return hr;
     }
 
-    // Create the vertex shader 頂点シェーダーの作成
+    // Create the vertex shader 頂点シェーダーの作成-------------------------------------------------------------------------
     hr = g_pd3dDevice->CreateVertexShader( pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), NULL, &g_pVertexShader );
     if( FAILED( hr ) )
     {    
@@ -427,7 +439,15 @@ HRESULT InitDevice()
         return hr;
     }
 
-    // Define the input layout
+    //タイトル画面用
+    hr = g_pd3dDevice->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), NULL, &g_pVertexShader4);
+    if (FAILED(hr))
+    {
+        pVSBlob->Release();
+        return hr;
+    }
+
+    // Define the input layout-----------------------------------------------------------------------------------------------------
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
@@ -436,17 +456,17 @@ HRESULT InitDevice()
     };
     UINT numElements = ARRAYSIZE( layout );
 
-    // Create the input layout
+    // Create the input layout---------------------------------------------------------------------------------------------------
     hr = g_pd3dDevice->CreateInputLayout( layout, numElements, pVSBlob->GetBufferPointer(),
                                           pVSBlob->GetBufferSize(), &g_pVertexLayout );
     pVSBlob->Release();
     if( FAILED( hr ) )
         return hr;
 
-    // Set the input layout
+    // Set the input layout-------------------------------------------------------------------------------------------------
     g_pImmediateContext->IASetInputLayout( g_pVertexLayout );
 
-    // Compile the pixel shader
+    // Compile the pixel shader-------------------------------------------------------------------------------------------------
     ID3DBlob* pPSBlob = NULL;
     hr = CompileShaderFromFile( L"Tutorial07.fx", "PS", "ps_4_0", &pPSBlob );
     if( FAILED( hr ) )
@@ -456,7 +476,7 @@ HRESULT InitDevice()
         return hr;
     }
 
-    // Create the pixel shader　ピクセルシェーダー作る
+    // Create the pixel shader　ピクセルシェーダー作る-------------------------------------------------------------------------------------------------
     hr = g_pd3dDevice->CreatePixelShader( pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), NULL, &g_pPixelShader );
     if (FAILED(hr)) {
         pPSBlob->Release();
@@ -464,6 +484,13 @@ HRESULT InitDevice()
     }
 
     hr = g_pd3dDevice->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), NULL, &g_pPixelShader2);
+    if (FAILED(hr)) {
+        pPSBlob->Release();
+        return hr;
+    }
+
+    //タイトル画面用
+    hr = g_pd3dDevice->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), NULL, &g_pPixelShader4);
     if (FAILED(hr)) {
         pPSBlob->Release();
         return hr;
@@ -590,6 +617,27 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
+    int Size = 10;
+
+    SimpleVertex vertices4[] = {
+        {XMFLOAT3(-1.0f * Size,-1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f)},
+        {XMFLOAT3(1.0f * Size, -1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f,-1.0f),XMFLOAT2(1.0f, 0.0f)},
+        {XMFLOAT3(1.0f * Size,  1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 1.0f)},
+        {XMFLOAT3(-1.0f * Size, 1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 1.0f)},
+    };
+
+    ZeroMemory(&bd, sizeof(bd));
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(SimpleVertex) * 4;
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    D3D11_SUBRESOURCE_DATA InitData4;
+    ZeroMemory(&InitData4, sizeof(InitData4));
+    InitData4.pSysMem = vertices4;
+    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData4, &g_pVertexBuffer4);
+    if (FAILED(hr))
+        return hr;
+
 #if 0
     // Set vertex buffer
     UINT stride = sizeof( SimpleVertex );
@@ -710,7 +758,7 @@ HRESULT InitDevice()
     // Initialize the world matrices
     g_World = XMMatrixIdentity();
 
-    // Initialize the view matrix
+    // Initialize the view matrix       //ここを変更すると視点変更できる
     XMVECTOR Eye = XMVectorSet( 0.0f, 3.0f, -6.0f, 0.0f );
     XMVECTOR At = XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f );
     XMVECTOR Up = XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f );
@@ -844,6 +892,7 @@ void Render( )
 /// </summary>
 /// <returns>0</returns>
 int DrawStage() {
+
     //g_World = XMMatrixTranslation(x, 0, 0);
     //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y回転処理(時間ごと回転)
     //g_World *= XMMatrixTranslationFromVector(translate);  //移動したかったけど、XMVECTORがよくわからん
@@ -906,6 +955,7 @@ int DrawStage() {
 /// </summary>
 /// <returns>0</returns>
 int DrawDuck() {
+
     //------------------------------------------------------------------
 //本体の描画
     UINT stride2 = sizeof(SimpleVertex);
@@ -1298,12 +1348,15 @@ void SceneManagement() {
 
     switch (mScene) {
     case eScene::TITLE:
-
+        ChangeTitleScene();
+        RenderTitleScene();
         break;
     case eScene::SELECT:
 
         break;
     case eScene::GAME:
+
+        SetViewDir();
         DrawStage();    //ステージの描画
         DrawDuck();
 
@@ -1314,3 +1367,78 @@ void SceneManagement() {
     }
 }
 
+/// <summary>
+/// spaceキーでタイトルからシーン遷移
+/// </summary>
+void ChangeTitleScene() {
+    int InputKey = KeyInputTriggerSense();
+    if (InputKey & KEY_SPACE) {
+        mNextScene = eScene::GAME;
+    }
+}
+
+/// <summary>
+/// タイトルシーンの描画
+/// </summary>
+/// <returns>0</returns>
+int RenderTitleScene() {
+
+
+    // Initialize the view matrix       //ここを変更すると視点変更できる
+    XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -6.0f, 0.0f);
+    XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    g_View = XMMatrixLookAtLH(Eye, At, Up);
+
+    CBNeverChanges cbNeverChanges;
+    cbNeverChanges.mView = XMMatrixTranspose(g_View);
+    g_pImmediateContext->UpdateSubresource(g_pCBNeverChanges, 0, NULL, &cbNeverChanges, 0, 0);
+
+    // Set vertex buffer
+    UINT stride4 = sizeof(SimpleVertex);
+    UINT offset4 = 0;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer4, &stride4, &offset4);
+
+    g_World = XMMatrixTranslation(0, 0, 0);
+
+    CBChangesEveryFrame cb;
+    cb.mWorld = XMMatrixTranspose(g_World);
+    cb.vMeshColor = g_vMeshColor;
+    cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.5f, 1.0f);
+    cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+
+    //
+    // Render the cube
+    //
+    g_pImmediateContext->VSSetShader(g_pVertexShader4, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShader(g_pPixelShader4, NULL, 0);
+    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
+    g_pImmediateContext->DrawIndexed(6, 0, 0);
+
+;
+    return 0;
+}
+
+/// <summary>
+/// カメラの向きを設定する
+/// </summary>
+/// <returns>0</returns>
+int SetViewDir() {
+
+    // Initialize the view matrix       //ここを変更すると視点変更できる
+    XMVECTOR Eye = XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
+    XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    g_View = XMMatrixLookAtLH(Eye, At, Up);
+
+    CBNeverChanges cbNeverChanges;
+    cbNeverChanges.mView = XMMatrixTranspose(g_View);
+    g_pImmediateContext->UpdateSubresource(g_pCBNeverChanges, 0, NULL, &cbNeverChanges, 0, 0);
+
+    return 0;
+}
