@@ -1409,8 +1409,8 @@ int RenderTitleScene() {
     CBChangesEveryFrame cb;
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.vMeshColor = g_vMeshColor;
-    cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.5f, 1.0f);
-    cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -1.0f, 1.0f);
+    cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
     g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
     //
