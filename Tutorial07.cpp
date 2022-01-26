@@ -617,13 +617,13 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-    int Size = 16;
+    int Size = 13;
 
     SimpleVertex vertices4[] = {
-        {XMFLOAT3(-1.0f * Size,-1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f)},
-        {XMFLOAT3(1.0f * Size, -1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f,-1.0f),XMFLOAT2(1.0f, 1.0f)},
-        {XMFLOAT3(1.0f * Size,  1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 0.0f)},
-        {XMFLOAT3(-1.0f * Size, 1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 0.0f)},
+        {XMFLOAT3(-1.0f * Size,-1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f)},
+        {XMFLOAT3(1.0f * Size, -1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f,-1.0f),XMFLOAT2(1.0f, 1.0f)},
+        {XMFLOAT3(1.0f * Size,  1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 0.0f)},
+        {XMFLOAT3(-1.0f * Size, 1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 0.0f)},
     };
 
     ZeroMemory(&bd, sizeof(bd));
