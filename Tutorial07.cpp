@@ -176,8 +176,8 @@ const int StageSize = 6;
 const int StageLevel[36] = 
 {
         2,2,2,1,1,1,
-        2,1,1,0,0,0,
-        2,1,2,0,0,0,
+        2,1,1,2,0,0,
+        2,1,1,2,0,0,
         1,1,1,1,1,1,
         1,1,1,1,1,1,
         1,1,1,1,1,1,
@@ -617,13 +617,13 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-    int Size = 10;
+    int Size = 16;
 
     SimpleVertex vertices4[] = {
-        {XMFLOAT3(-1.0f * Size,-1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 0.0f)},
-        {XMFLOAT3(1.0f * Size, -1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f,-1.0f),XMFLOAT2(1.0f, 0.0f)},
-        {XMFLOAT3(1.0f * Size,  1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 1.0f)},
-        {XMFLOAT3(-1.0f * Size, 1.0f * Size, 1.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 1.0f)},
+        {XMFLOAT3(-1.0f * Size,-1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f)},
+        {XMFLOAT3(1.0f * Size, -1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f,-1.0f),XMFLOAT2(1.0f, 1.0f)},
+        {XMFLOAT3(1.0f * Size,  1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 0.0f)},
+        {XMFLOAT3(-1.0f * Size, 1.0f * Size, 20.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 0.0f)},
     };
 
     ZeroMemory(&bd, sizeof(bd));
@@ -736,6 +736,11 @@ HRESULT InitDevice()
 #if 1
     //２つ目のテクスチャの読み込み
     hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"hiyoko.dds", NULL, NULL, &g_pTextureRV2, NULL);
+    if (FAILED(hr))
+        return hr;
+
+    //タイトルのテクスチャの読み込み
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"title.dds", NULL, NULL, &g_pTextureRV4, NULL);
     if (FAILED(hr))
         return hr;
 #endif
@@ -1399,7 +1404,7 @@ int RenderTitleScene() {
     UINT offset4 = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer4, &stride4, &offset4);
 
-    g_World = XMMatrixTranslation(0, 0, 0);
+    g_World = XMMatrixTranslation(0, 1, 0);
 
     CBChangesEveryFrame cb;
     cb.mWorld = XMMatrixTranspose(g_World);
@@ -1417,7 +1422,7 @@ int RenderTitleScene() {
     g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShader(g_pPixelShader4, NULL, 0);
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV4);
     g_pImmediateContext->DrawIndexed(6, 0, 0);
 
 ;
