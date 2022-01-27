@@ -23,6 +23,7 @@
 #define KEY_1 64
 #define KEY_2 128
 #define KEY_B 256
+#define KEY_R 512
 
 enum class eScene {
     TITLE,      //0
@@ -62,6 +63,7 @@ struct CBChangesEveryFrame
     XMFLOAT4 vMeshColor;
     XMFLOAT4 vLightDir;
     XMFLOAT4 vLightColor;
+    XMFLOAT4 vChangeColor;
 };
 
 //--------------------------------------------------------------------------------------
@@ -88,6 +90,8 @@ ID3D11Buffer*                       g_pCBChangesEveryFrame = NULL;
 ID3D11ShaderResourceView*           g_pTextureRV = NULL;
 ID3D11SamplerState*                 g_pSamplerLinear = NULL;
 
+ID3D11PixelShader* g_pPixelShaderGoal = NULL;
+
 //２個目用
 ID3D11VertexShader*                 g_pVertexShader2 = NULL;
 ID3D11PixelShader*                  g_pPixelShader2 = NULL;
@@ -103,8 +107,10 @@ ID3D11Buffer*                       g_pVertexBuffer3 = NULL;
 ID3D11VertexShader*                 g_pVertexShader4 = NULL;
 ID3D11PixelShader*                  g_pPixelShader4 = NULL;
 ID3D11Buffer*                       g_pVertexBuffer4 = NULL;
-ID3D11Buffer*                       g_pIndexBuffer4 = NULL;     //ここは使ったほうがいいかも
 ID3D11ShaderResourceView*           g_pTextureRV4 = NULL;
+
+ID3D11ShaderResourceView*           g_pTextureRVClear = NULL;
+
 
 
 
@@ -133,7 +139,12 @@ void PlayDuckAction(int* duck_action, int action_list_index);
 void SceneManagement();
 void ChangeTitleScene();
 int RenderTitleScene();
-int SetViewDir();
+int SetViewDir(float EyePosX, float EyePosY, float EyePosZ);
+void JudgeGameClear();
+void TlansitGameScene(float& ClearedTime);
+void InitializeGameScene();
+void ChangeClearScene();
+int RenderClearScene();
 
 
 //XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
@@ -183,16 +194,30 @@ const int StageLevel[36] =
         1,1,1,1,1,1,
 };
 
+const int StageGimmick[36] =
+{
+    0,0,0,0,0,1,
+    0,0,0,0,0,0,
+    0,0,0,0,0,0,
+    0,0,0,0,0,0,
+    0,0,0,0,0,0,
+    0,0,0,0,0,0,
+};
+
 //キャラクターの向きを持つデータをmod4で
-int CharacterDirection = 100000; //4の倍数じゃないとだめ,あひるのむきを計算
+static int CharacterDirection = 100000; //4の倍数じゃないとだめ,あひるのむきを計算
 const int Mod = 4;
 
+static int DuckActionMain[12] = {};         //アクションを保存する配列
+static int DuckActionPattern1[8] = {};      //パターンアクションを保存する配列
+static int mainCount = 0;                   //メインアクションに入れるためのカウント
+static int pattern1Count = 0;               //パターンアクションに入れるためのカウント
 
+static int duckX = 0;               //ひよこのX座標
+static int duckY = StageSize - 1;   //ひよこのY座標
+static int duckZ = 0;               //ひよこのZ座標
 
-int duckX = 0;               //ひよこのX座標
-int duckY = StageSize - 1;   //ひよこのY座標
-int duckZ = 0;               //ひよこのZ座標
-
+static bool GameClearFlag = false;
 
 
 //--------------------------------------------------------------------------------------
@@ -489,8 +514,34 @@ HRESULT InitDevice()
         return hr;
     }
 
+    // Compile the pixel shader-------------------------------------------------------------------------------------------------
+    //ID3DBlob* pPSBlob = NULL;
+    hr = CompileShaderFromFile(L"Tutorial07.fx", "PS2", "ps_4_0", &pPSBlob);
+    if (FAILED(hr))
+    {
+        MessageBox(NULL,
+            L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+        return hr;
+    }
+
     //タイトル画面用
     hr = g_pd3dDevice->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), NULL, &g_pPixelShader4);
+    if (FAILED(hr)) {
+        pPSBlob->Release();
+        return hr;
+    }
+
+    //ゴールのシェーダー
+    hr = CompileShaderFromFile(L"Tutorial07.fx", "PSGoal", "ps_4_0", &pPSBlob);
+    if (FAILED(hr))
+    {
+        MessageBox(NULL,
+            L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+        return hr;
+    }
+
+    //タイトル画面用
+    hr = g_pd3dDevice->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), NULL, &g_pPixelShaderGoal);
     if (FAILED(hr)) {
         pPSBlob->Release();
         return hr;
@@ -743,6 +794,10 @@ HRESULT InitDevice()
     hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"title.dds", NULL, NULL, &g_pTextureRV4, NULL);
     if (FAILED(hr))
         return hr;
+
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"gameclear.dds", NULL, NULL, &g_pTextureRVClear, NULL);
+    if (FAILED(hr))
+        return hr;
 #endif
 
     //--------------------------------------------------------------
@@ -809,13 +864,22 @@ void CleanupDevice()
     if( g_pImmediateContext ) g_pImmediateContext->Release();
     if( g_pd3dDevice ) g_pd3dDevice->Release();
 
+    if (g_pPixelShaderGoal) g_pPixelShaderGoal->Release();
+
     //ひよこの描画に使うやつ
     if (g_pVertexBuffer2) g_pVertexBuffer2->Release();
     if (g_pVertexShader2) g_pVertexShader2->Release();
     if (g_pPixelShader2) g_pPixelShader2->Release();
+    if (g_pTextureRV2) g_pTextureRV2->Release();
 
     if (g_pVertexBuffer3) g_pVertexBuffer3->Release();
    
+    //タイトル画面用
+    if (g_pVertexBuffer4) g_pVertexBuffer4->Release();
+    if (g_pVertexShader4) g_pVertexShader4->Release();
+    if (g_pPixelShader4) g_pPixelShader4->Release();
+    if (g_pTextureRV4) g_pTextureRV4->Release();
+
 
 }
 
@@ -932,20 +996,43 @@ int DrawStage() {
                 cb.vMeshColor = g_vMeshColor;
                 cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.3f, 1.0f);
                 cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+                cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
                 g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
-                //
-                // Render the cube
-                //
-                g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
-                g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
-                g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
-                g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-                g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
-                g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
-                g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
-                g_pImmediateContext->DrawIndexed(36, 0, 0);
+                if (StageGimmick[StageSize * Dep + Wid] == 1) {
+                    //
+                    // Render the cube
+                    //
+                    if (GameClearFlag) {
+                        cb.vChangeColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+                        g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+                    }
+                    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+                    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+                    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+                    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                    g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);
+                    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                    g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
+                    g_pImmediateContext->DrawIndexed(36, 0, 0);
+
+                }
+                else {
+                    //
+                    // Render the cube
+                    //
+                    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+                    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+                    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+                    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                    g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
+                    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                    g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
+                    g_pImmediateContext->DrawIndexed(36, 0, 0);
+                }
+
             }
             cnt++;
         }
@@ -984,43 +1071,12 @@ int DrawDuck() {
 
 
     //座標系ステージの一番奥を(0,0)にする右斜め下X正、左斜め下Y正
-    //プレイヤーをステージの上で動かす
-
-#if 0   //グローバル変数にした。上にある
-    //キャラクターの向きを持つデータをmod4で
-    static int CharacterDirection = 100000; //4の倍数じゃないとだめ,あひるのむきを計算
-    int Mod = 4;
-
-    //前後左右を計算しやすくするためのデータ
-    const int dx[4] = { 1, 0, -1,  0};
-    const int dy[4] = { 0, 1,  0, -1};
-
-    static int duckX = 0;               //ひよこのX座標
-    static int duckY = StageSize - 1;   //ひよこのY座標
-    static int duckZ = 0;               //ひよこのZ座標
-#endif
 
     int keyinputtrigger = KeyInputTriggerSense();
     static int duckActionMenu = KEY_1;
     if (keyinputtrigger & KEY_1) duckActionMenu = KEY_1;
     if (keyinputtrigger & KEY_2) duckActionMenu = KEY_2;
-
-    static int DuckActionMain[12] = {};        //アクションを保存する配列
-    static int DuckActionPattern1[8] = {};     //パターンアクションを保存する配列
-    static int CountPattern1Play = 0;
-    static int mainCount = 0;      
-    static int pattern1Count = 0;
-#if 0
-    if (mainCount < 12) {   //12個まで入れられるように
-        if (keyinputtrigger) {
-            if (keyinputtrigger & KEY_LEFT) DuckActionMain[mainCount] = KEY_LEFT;
-            if (keyinputtrigger & KEY_RIGHT) DuckActionMain[mainCount] = KEY_RIGHT;
-            if (keyinputtrigger & KEY_UP) DuckActionMain[mainCount] = KEY_UP;
-            if (keyinputtrigger & KEY_SPACE) DuckActionMain[mainCount] = KEY_SPACE;
-            mainCount++;
-        }
-    }
-#endif
+    if (keyinputtrigger & KEY_R) InitializeGameScene();
 
     switch (duckActionMenu) {
         case KEY_1:
@@ -1101,12 +1157,12 @@ int DrawDuck() {
     duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
 #endif
 
-#if 1
     //再生システム
     static bool PlayFlag = false;   //再生フラグ
     static float beforeTime = 0;    //移動する一個前に時間
     const float FlameTime = 0.4f;   //一個の移動にかかる時間
     static int countPlay = 0;       //実行される行動の個数
+    static int CountPattern1Play = 0;
     if (keyinputtrigger & KEY_P) PlayFlag = true;
 
     if (PlayFlag) {
@@ -1132,37 +1188,9 @@ int DrawDuck() {
                     else if (DuckActionMain[countPlay] == 0) {
                         PlayFlag = false;
                         countPlay = 0;
+                        JudgeGameClear();
                     }
                 }
-#if 0
-                int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
-                int NextX = duckX + dx[move];                                   //次のX座標
-                int NextY = duckY + dy[move];                                   //次のY座標
-                int NextStageLevel = StageLevel[StageSize * NextY + NextX];     //次のステージの高さ
-
-                if (action[countPlay] & KEY_LEFT) {
-                    CharacterDirection--;   //左回転
-                }
-                if (action[countPlay] & KEY_RIGHT) {
-                    CharacterDirection++;   //右回転
-                }
-                if (action[countPlay] & KEY_UP) {
-                    if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
-                        //範囲外にでないようにする　範囲内にいるときだけ計算
-                        if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-                        if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
-                    }
-                }
-                if (action[countPlay] & KEY_SPACE) {
-                    if (NextStageLevel != 0) {      //ステージがない箇所に行かないようにする
-                        //範囲外にでないようにする
-                        if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-                        if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
-                    }
-
-                    //高さが同じでもジャンプ出前に行けるようにしておく
-                }
-#endif
 
                 //duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算　ここはなくてもいい
                 beforeTime = time;
@@ -1171,40 +1199,12 @@ int DrawDuck() {
         else {
             PlayFlag = false;
             countPlay = 0;
+            JudgeGameClear();
         }
-#elif 0     //一回で全部動かす
-        for (int i = 0; i < 12; i++) {
-            move = CharacterDirection % Mod;                            //動く方向を処理するための数値
-            NextX = duckX + dx[move];                                   //次のX座標
-            NextY = duckY + dy[move];
-            NextStageLevel = StageLevel[StageSize * NextY + NextX];
-            if (action[i] & KEY_LEFT) {
-                CharacterDirection--;   //左回転
-            }
-            if (action[i] & KEY_RIGHT) {
-                CharacterDirection++;   //右回転
-            }
-            if (action[i] & KEY_UP) {
-                if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
-                    //範囲外にでないようにする　範囲内にいるときだけ計算
-                    if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-                    if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
-                }
-            }
-            if (action[i] & KEY_SPACE) {
-                if (NextStageLevel != 0) {      //ステージがない箇所に行かないようにする
-                    //範囲外にでないようにする
-                    if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-                    if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
-                }
-
-                //高さが同じでもジャンプ出前に行けるようにしておく
-            }
-            duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
-        }
-        PlayFlag = false;
-#endif
     }
+
+    TlansitGameScene(beforeTime);
+
 #endif
 
     duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算 
@@ -1222,6 +1222,7 @@ int DrawDuck() {
     cb.vMeshColor = g_vMeshColor;
     cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.5f, 1.0f);
     cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
     g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
     //
@@ -1238,7 +1239,7 @@ int DrawDuck() {
 
 
 
-    //あひるの頭の部分の描画
+    //あひるの頭の部分の描画------------------------------------------------------------
     UINT stride3 = sizeof(SimpleVertex);
     UINT offset3 = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer3, &stride3, &offset3);   //頂点バッファをセットする
@@ -1249,6 +1250,7 @@ int DrawDuck() {
     cb.vMeshColor = g_vMeshColor;
     cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.5f, 1.0f);
     cb.vLightColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+    cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
     g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
     //
@@ -1280,6 +1282,7 @@ void KeyInput() {
     if (GetAsyncKeyState('2') & 0x8000)         key_input |= KEY_2;
     if (GetAsyncKeyState('E') & 0x8000)         key_input |= KEY_E;
     if (GetAsyncKeyState('B') & 0x8000)         key_input |= KEY_B;
+    if (GetAsyncKeyState('R') & 0x8000)         key_input |= KEY_R;
 }
 
 /// <summary>
@@ -1298,6 +1301,7 @@ int KeyInputTriggerSense() {
     if (key_input & KEY_2)      if (!(beforeKeyInput2 & KEY_2))     key_input_triggersense |= KEY_2;
     if (key_input & KEY_E)      if (!(beforeKeyInput2 & KEY_E))     key_input_triggersense |= KEY_E;
     if (key_input & KEY_B)      if (!(beforeKeyInput2 & KEY_B))     key_input_triggersense |= KEY_B;
+    if (key_input & KEY_R)      if (!(beforeKeyInput2 & KEY_R))     key_input_triggersense |= KEY_R;
     beforeKeyInput2 = key_input;
     return key_input_triggersense;
 }
@@ -1361,13 +1365,15 @@ void SceneManagement() {
         break;
     case eScene::GAME:
 
-        SetViewDir();
+        SetViewDir(0.0f, 3.0f,-6.0f);
         DrawStage();    //ステージの描画
         DrawDuck();
 
         break;
     case eScene::CLEAR:
 
+        ChangeClearScene();
+        RenderClearScene();
         break;
     }
 }
@@ -1387,17 +1393,7 @@ void ChangeTitleScene() {
 /// </summary>
 /// <returns>0</returns>
 int RenderTitleScene() {
-
-
-    // Initialize the view matrix       //ここを変更すると視点変更できる
-    XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -6.0f, 0.0f);
-    XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    g_View = XMMatrixLookAtLH(Eye, At, Up);
-
-    CBNeverChanges cbNeverChanges;
-    cbNeverChanges.mView = XMMatrixTranspose(g_View);
-    g_pImmediateContext->UpdateSubresource(g_pCBNeverChanges, 0, NULL, &cbNeverChanges, 0, 0);
+    SetViewDir(0.0f, 1.0f, -6.0f);
 
     // Set vertex buffer
     UINT stride4 = sizeof(SimpleVertex);
@@ -1411,6 +1407,7 @@ int RenderTitleScene() {
     cb.vMeshColor = g_vMeshColor;
     cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -1.0f, 1.0f);
     cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+    cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
     g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
     //
@@ -1430,13 +1427,66 @@ int RenderTitleScene() {
 }
 
 /// <summary>
+/// spaceキーでクリア画面からシーン遷移
+/// </summary>
+void ChangeClearScene() {
+    int InputKey = KeyInputTriggerSense();
+    if (InputKey & KEY_SPACE) {
+        mNextScene = eScene::TITLE;
+    }
+}
+
+
+/// <summary>
+/// ゲームクリアシーンの描画
+/// </summary>
+/// <returns></returns>
+int RenderClearScene() {
+    SetViewDir(0.0f, 1.0f, -6.0f);
+
+    // Set vertex buffer
+    UINT stride4 = sizeof(SimpleVertex);
+    UINT offset4 = 0;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer4, &stride4, &offset4);
+
+    g_World = XMMatrixTranslation(0, 1, 0);
+
+    CBChangesEveryFrame cb;
+    cb.mWorld = XMMatrixTranspose(g_World);
+    cb.vMeshColor = g_vMeshColor;
+    cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -1.0f, 1.0f);
+    cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+    cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+    g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+
+    //
+    // Render the cube
+    //
+    g_pImmediateContext->VSSetShader(g_pVertexShader4, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShader(g_pPixelShader4, NULL, 0);
+    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVClear);
+    g_pImmediateContext->DrawIndexed(6, 0, 0);
+
+    ;
+    return 0;
+}
+
+
+/// <summary>
 /// カメラの向きを設定する
 /// </summary>
+/// <param name="EyePosX">目のX座標</param>
+/// <param name="EyePosY">目のY座標</param>
+/// <param name="EyePosZ">目のZ座標</param>
 /// <returns>0</returns>
-int SetViewDir() {
+int SetViewDir(float EyePosX,float EyePosY,float EyePosZ) {
 
     // Initialize the view matrix       //ここを変更すると視点変更できる
-    XMVECTOR Eye = XMVectorSet(0.0f, 3.0f, -6.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(EyePosX, EyePosY, EyePosZ, 0.0f);
     XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     g_View = XMMatrixLookAtLH(Eye, At, Up);
@@ -1446,4 +1496,41 @@ int SetViewDir() {
     g_pImmediateContext->UpdateSubresource(g_pCBNeverChanges, 0, NULL, &cbNeverChanges, 0, 0);
 
     return 0;
+}
+
+/// <summary>
+/// ゲームクリアの判定
+/// </summary>
+void JudgeGameClear() {
+    if (StageGimmick[StageSize * duckY + duckX] == 1) {
+        GameClearFlag = true;
+    }
+}
+
+/// <summary>
+/// ゲームシーンシーンから他のシーンへの遷移
+/// </summary>
+/// <param name="ClearedTime">クリアした瞬間の時間</param>
+void TlansitGameScene(float& ClearedTime) {
+    const float TransitBeforeTime = 1.0f;
+    if (GameClearFlag) {
+        if (ClearedTime + TransitBeforeTime < time) {
+            mScene = eScene::CLEAR;
+            InitializeGameScene();
+        }
+    }
+}
+
+/// <summary>
+/// ゲームシーンの初期化を行う
+/// </summary>
+void InitializeGameScene() {
+    GameClearFlag = false;
+    CharacterDirection = 100000;
+    duckX = 0;
+    duckY = StageSize - 1;
+    for (int i = 0; i < 12; i++)DuckActionMain[i] = 0;
+    for (int i = 0; i < 8; i++) DuckActionPattern1[i] = 0;
+    mainCount = 0;
+    pattern1Count = 0;
 }

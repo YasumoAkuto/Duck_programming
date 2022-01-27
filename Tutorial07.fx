@@ -26,6 +26,7 @@ cbuffer cbChangesEveryFrame : register( b2 )
     float4 vMeshColor;
     float4 vLightDir;
     float4 vLightColor;
+    float4 vChangeColor;
 };
 
 
@@ -73,4 +74,33 @@ float4 PS(PS_INPUT input) : SV_Target
     //finalColor.r = 1;
 
     return txDiffuse.Sample( samLinear, input.Tex ) * vMeshColor * finalColor;
+}
+
+float4 PSGoal(PS_INPUT input) : SV_Target
+{
+    float4 finalColor = {1.0f,0.0f,0.0f,1.0f};
+
+    //finalColor = vLightColor;
+    //finalColor += saturate(dot((float3)vLightDir, input.Norm) * vLightColor);
+    finalColor.a = 1;
+    //finalColor.r = 1;
+
+    return txDiffuse.Sample(samLinear, input.Tex) * vMeshColor * vChangeColor;
+}
+
+float4 PS2(PS_INPUT input) : SV_Target
+{
+    return txDiffuse.Sample(samLinear, input.Tex) * vMeshColor;
+}
+
+
+float4 PSGoal2(PS_INPUT input) : SV_Target
+{
+    float4 finalColor = {1.0f,0.0f,0.0f,1.0f};
+
+    finalColor += saturate(dot((float3)vLightDir, input.Norm) * vLightColor);
+    finalColor.a = 1;
+    //finalColor.r = 1;
+
+    return txDiffuse.Sample(samLinear, input.Tex) * vMeshColor * finalColor;
 }
