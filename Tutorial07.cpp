@@ -107,10 +107,16 @@ ID3D11Buffer*                       g_pVertexBuffer3 = NULL;
 ID3D11VertexShader*                 g_pVertexShader4 = NULL;
 ID3D11PixelShader*                  g_pPixelShader4 = NULL;
 ID3D11Buffer*                       g_pVertexBuffer4 = NULL;
-ID3D11ShaderResourceView*           g_pTextureRV4 = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVTitle = NULL;
 
 ID3D11ShaderResourceView*           g_pTextureRVClear = NULL;
 
+ID3D11Buffer*                       g_pVertexBufferGameUI = NULL;
+
+ID3D11ShaderResourceView*           g_pTextureRVForward = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVRight = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVLeft = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVJump = NULL;
 
 
 
@@ -145,6 +151,7 @@ void TlansitGameScene(float& ClearedTime);
 void InitializeGameScene();
 void ChangeClearScene();
 int RenderClearScene();
+void RenderGameUI();
 
 
 //XMFLOAT3(幅、高さ、奥行),XMFLOAT2(テクスチャー)
@@ -218,6 +225,8 @@ static int duckY = StageSize - 1;   //ひよこのY座標
 static int duckZ = 0;               //ひよこのZ座標
 
 static bool GameClearFlag = false;
+
+static int DuckActionMenu = KEY_1;
 
 
 //--------------------------------------------------------------------------------------
@@ -663,12 +672,12 @@ HRESULT InitDevice()
     bd.CPUAccessFlags = 0;
     D3D11_SUBRESOURCE_DATA InitData3;
     ZeroMemory(&InitData3, sizeof(InitData3));
-    InitData3.pSysMem = vertices3;
+    InitData3.pSysMem = vertices3;                  //ポインターを渡してるので、元データが必要、vertices2は使えない
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData3, &g_pVertexBuffer3);
     if (FAILED(hr))
         return hr;
 
-    int Size = 13;
+    float Size = 13;
 
     SimpleVertex vertices4[] = {
         {XMFLOAT3(-1.0f * Size,-1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f)},
@@ -686,6 +695,29 @@ HRESULT InitDevice()
     ZeroMemory(&InitData4, sizeof(InitData4));
     InitData4.pSysMem = vertices4;
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData4, &g_pVertexBuffer4);
+    if (FAILED(hr))
+        return hr;
+
+
+    //UIの正方形に使う
+    Size = 1.0f;
+
+    SimpleVertex vertices5[] = {
+    {XMFLOAT3(-1.0f * Size,-1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT2(0.0f, 1.0f)},
+    {XMFLOAT3(1.0f * Size, -1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f,-1.0f),XMFLOAT2(1.0f, 1.0f)},
+    {XMFLOAT3(1.0f * Size,  1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(1.0f, 0.0f)},
+    {XMFLOAT3(-1.0f * Size, 1.0f * Size, 0.0f),XMFLOAT3(0.0f, 0.0f, -1.0f),XMFLOAT2(0.0f, 0.0f)},
+    };
+
+    ZeroMemory(&bd, sizeof(bd));
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(SimpleVertex) * 4;
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    D3D11_SUBRESOURCE_DATA InitData5;
+    ZeroMemory(&InitData5, sizeof(InitData5));
+    InitData5.pSysMem = vertices5;
+    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData5, &g_pVertexBufferGameUI);
     if (FAILED(hr))
         return hr;
 
@@ -791,11 +823,30 @@ HRESULT InitDevice()
         return hr;
 
     //タイトルのテクスチャの読み込み
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"title.dds", NULL, NULL, &g_pTextureRV4, NULL);
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"title.dds", NULL, NULL, &g_pTextureRVTitle, NULL);
     if (FAILED(hr))
         return hr;
 
     hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"gameclear.dds", NULL, NULL, &g_pTextureRVClear, NULL);
+    if (FAILED(hr))
+        return hr;
+
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"forward.dds", NULL, NULL, &g_pTextureRVForward, NULL);
+    if (FAILED(hr))
+        return hr;
+
+
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"left.dds", NULL, NULL, &g_pTextureRVLeft, NULL);
+    if (FAILED(hr))
+        return hr;
+
+
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"right.dds", NULL, NULL, &g_pTextureRVRight, NULL);
+    if (FAILED(hr))
+        return hr;
+
+
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"jump.dds", NULL, NULL, &g_pTextureRVJump, NULL);
     if (FAILED(hr))
         return hr;
 #endif
@@ -878,8 +929,16 @@ void CleanupDevice()
     if (g_pVertexBuffer4) g_pVertexBuffer4->Release();
     if (g_pVertexShader4) g_pVertexShader4->Release();
     if (g_pPixelShader4) g_pPixelShader4->Release();
-    if (g_pTextureRV4) g_pTextureRV4->Release();
+    if (g_pTextureRVTitle) g_pTextureRVTitle->Release();
 
+    if (g_pTextureRVClear) g_pTextureRVClear->Release();
+
+    if (g_pVertexBufferGameUI) g_pVertexBufferGameUI->Release();
+
+    if (g_pTextureRVForward) g_pTextureRVForward->Release();
+    if (g_pTextureRVRight) g_pTextureRVRight->Release();
+    if (g_pTextureRVLeft) g_pTextureRVLeft->Release();
+    if (g_pTextureRVJump) g_pTextureRVJump->Release();
 
 }
 
@@ -946,9 +1005,6 @@ void Render( )
     SceneManagement();
 
 
-    
-    //XMVECTOR translate = XMVectorSet(1.0f, 2.0f, 3.0f, );
-
     //
     // Present our back buffer to our front buffer
     //
@@ -961,10 +1017,6 @@ void Render( )
 /// </summary>
 /// <returns>0</returns>
 int DrawStage() {
-
-    //g_World = XMMatrixTranslation(x, 0, 0);
-    //g_World = XMMatrixRotationY( t ) * XMMatrixRotationX(t) * XMMatrixTranslation(t, 3, 3);   //Y回転処理(時間ごと回転)
-    //g_World *= XMMatrixTranslationFromVector(translate);  //移動したかったけど、XMVECTORがよくわからん
 
 #if 0
     // Modify the color
@@ -1073,12 +1125,12 @@ int DrawDuck() {
     //座標系ステージの一番奥を(0,0)にする右斜め下X正、左斜め下Y正
 
     int keyinputtrigger = KeyInputTriggerSense();
-    static int duckActionMenu = KEY_1;
-    if (keyinputtrigger & KEY_1) duckActionMenu = KEY_1;
-    if (keyinputtrigger & KEY_2) duckActionMenu = KEY_2;
+    
+    if (keyinputtrigger & KEY_1) DuckActionMenu = KEY_1;
+    if (keyinputtrigger & KEY_2) DuckActionMenu = KEY_2;
     if (keyinputtrigger & KEY_R) InitializeGameScene();
 
-    switch (duckActionMenu) {
+    switch (DuckActionMenu) {
         case KEY_1:
             if (mainCount < 12) {   //12個まで入れられるように
                 if (keyinputtrigger) {
@@ -1091,8 +1143,9 @@ int DrawDuck() {
                     else if (keyinputtrigger & KEY_B) {             //一個前を取り消し
                         if (mainCount >= 1) {
                             DuckActionMain[mainCount - 1] = 0;
-                            mainCount -= 2;
+                            mainCount--;
                         }
+                        mainCount--;
                     }
                     else mainCount--;
                     mainCount++;
@@ -1115,8 +1168,9 @@ int DrawDuck() {
                     else if (keyinputtrigger & KEY_B) {
                         if (pattern1Count >= 1) {
                             DuckActionPattern1[pattern1Count - 1] = 0;
-                            pattern1Count -= 2;
+                            pattern1Count--;
                         }
+                        pattern1Count--;
                     }
                     else pattern1Count--;
                     pattern1Count++;
@@ -1130,32 +1184,6 @@ int DrawDuck() {
             }
             break;
     }
-
-#if 0 //キー入力した瞬間に動かす
-    if (keyinputtrigger & KEY_LEFT) {
-        CharacterDirection--;   //左回転
-    }
-    if (keyinputtrigger & KEY_RIGHT) {
-        CharacterDirection++;   //右回転
-    }
-    if (keyinputtrigger & KEY_UP) {
-        if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
-            //範囲外にでないようにする　範囲内にいるときだけ計算
-            if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-            if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
-        }
-    }
-    if (keyinputtrigger & KEY_SPACE) {
-        if (NextStageLevel != 0) {      //ステージがない箇所に行かないようにする
-            //範囲外にでないようにする
-            if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-            if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
-        }
-
-        //高さが同じでもジャンプ出前に行けるようにしておく
-    }
-    duckZ = StageLevel[StageSize * duckY + duckX];  //高さの計算
-#endif
 
     //再生システム
     static bool PlayFlag = false;   //再生フラグ
@@ -1364,10 +1392,11 @@ void SceneManagement() {
 
         break;
     case eScene::GAME:
-
         SetViewDir(0.0f, 3.0f,-6.0f);
+
         DrawStage();    //ステージの描画
         DrawDuck();
+        RenderGameUI();
 
         break;
     case eScene::CLEAR:
@@ -1419,7 +1448,7 @@ int RenderTitleScene() {
     g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShader(g_pPixelShader4, NULL, 0);
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV4);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVTitle);
     g_pImmediateContext->DrawIndexed(6, 0, 0);
 
 ;
@@ -1533,4 +1562,90 @@ void InitializeGameScene() {
     for (int i = 0; i < 8; i++) DuckActionPattern1[i] = 0;
     mainCount = 0;
     pattern1Count = 0;
+}
+
+void RenderGameUI() {
+    // Set vertex buffer
+    UINT stride5 = sizeof(SimpleVertex);
+    UINT offset5 = 0;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBufferGameUI, &stride5, &offset5);
+
+    CBChangesEveryFrame cb;
+
+    for (int wid = 0; wid < 6; wid++) {
+        for (int hig = 0; hig < 2; hig++) {
+            g_World = XMMatrixTranslation((wid - 4.5f) * 1.1f * 2 - 0.3f, -4 - hig * 1.1f * 2, -3) * XMMatrixRotationX(atan2(2, 6));
+            cb.mWorld = XMMatrixTranspose(g_World);
+            cb.vMeshColor = g_vMeshColor;
+            cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -1.0f, 1.0f);
+            cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+            float change = 1.0f;
+            if (DuckActionMenu & KEY_1) {
+                change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
+            }
+            cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
+            cb.vMeshColor.y = 0.85f;
+            cb.vMeshColor.z = 0.8f;
+            g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+            int key = DuckActionMain[hig * 6 + wid];
+            if (key & KEY_UP) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVForward);
+            else if (key & KEY_LEFT)  g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVLeft);
+            else if (key & KEY_RIGHT) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVRight);
+            else if (key & KEY_SPACE) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVJump);
+            else {
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+            }
+
+            //
+            // Render the cube
+            //
+            g_pImmediateContext->VSSetShader(g_pVertexShader4, NULL, 0);
+            g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+            g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+            g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+            g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);
+            g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+            g_pImmediateContext->DrawIndexed(6, 0, 0);
+        }
+    }
+
+
+    for (int wid = 0; wid < 4; wid++) {
+        for (int hig = 0; hig < 2; hig++) {
+            g_World = XMMatrixTranslation((wid + 1.5f) * 1.1f * 2 + 0.3f, -4 - hig * 1.1f * 2, -3) * XMMatrixRotationX(atan2(2, 6));
+
+            cb.mWorld = XMMatrixTranspose(g_World);
+            cb.vMeshColor = g_vMeshColor;
+            cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -1.0f, 1.0f);
+            cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+            cb.vChangeColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+            float change = 1.0f;
+            if (DuckActionMenu & KEY_2) {
+                change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
+            }
+            cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
+            cb.vMeshColor.x = 0.7f;
+            cb.vMeshColor.z = 0.8f;
+            g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+
+            //
+            // Render the cube
+            //
+            int key = DuckActionPattern1[hig * 4 + wid];
+            if (key & KEY_UP) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVForward);
+            else if (key & KEY_LEFT)  g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVLeft);
+            else if (key & KEY_RIGHT) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVRight);
+            else if (key & KEY_SPACE) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVJump);
+            else {
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+            }
+            g_pImmediateContext->VSSetShader(g_pVertexShader4, NULL, 0);
+            g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+            g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+            g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+            g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);
+            g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+            g_pImmediateContext->DrawIndexed(6, 0, 0);
+        }
+    }
 }
