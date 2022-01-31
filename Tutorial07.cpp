@@ -117,6 +117,8 @@ ID3D11ShaderResourceView*           g_pTextureRVForward = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVRight = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVLeft = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVJump = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVPattern = NULL;
+
 
 
 
@@ -139,18 +141,18 @@ LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
 void KeyInput();
 int KeyInputTriggerSense();
-int DrawStage();
-int DrawDuck();
+void DrawStage();
+void DrawDuck();
 void PlayDuckAction(int* duck_action, int action_list_index);
 void SceneManagement();
 void ChangeTitleScene();
-int RenderTitleScene();
-int SetViewDir(float EyePosX, float EyePosY, float EyePosZ);
+void RenderTitleScene();
+void SetViewDir(float EyePosX, float EyePosY, float EyePosZ);
 void JudgeGameClear();
 void TlansitGameScene(float& ClearedTime);
 void InitializeGameScene();
 void ChangeClearScene();
-int RenderClearScene();
+void RenderClearScene();
 void RenderGameUI();
 
 
@@ -193,7 +195,7 @@ SimpleVertex vertices[] =
 const int StageSize = 6;
 const int StageLevel[36] = 
 {
-        2,2,2,1,1,1,
+        2,2,2,1,1,2,
         2,1,1,2,0,0,
         2,1,1,2,0,0,
         1,1,1,1,1,1,
@@ -201,6 +203,7 @@ const int StageLevel[36] =
         1,1,1,1,1,1,
 };
 
+//ステージのゴール、ギミックの位置データ
 const int StageGimmick[36] =
 {
     0,0,0,0,0,1,
@@ -219,6 +222,8 @@ static int DuckActionMain[12] = {};         //アクションを保存する配列
 static int DuckActionPattern1[8] = {};      //パターンアクションを保存する配列
 static int mainCount = 0;                   //メインアクションに入れるためのカウント
 static int pattern1Count = 0;               //パターンアクションに入れるためのカウント
+    
+static bool PlayOnceFlag = true;    //一回だけ再生できるように
 
 static int duckX = 0;               //ひよこのX座標
 static int duckY = StageSize - 1;   //ひよこのY座標
@@ -226,7 +231,8 @@ static int duckZ = 0;               //ひよこのZ座標
 
 static bool GameClearFlag = false;
 
-static int DuckActionMenu = KEY_1;
+static int DuckActionMenu = KEY_1;  //アクションメニューの選択
+
 
 
 //--------------------------------------------------------------------------------------
@@ -766,27 +772,6 @@ HRESULT InitDevice()
     // Set index buffer
     g_pImmediateContext->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0 );
 
-#if 0 //これ使ってないからいらないわ
-    // ２つ目の、頂点インデックス設定
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD) * 36;
-    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    InitData.pSysMem = indices;
-    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer2);
-    if (FAILED(hr))
-        return hr;
-
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD) * 36;
-    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    InitData.pSysMem = indices;
-    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer3);
-    if (FAILED(hr))
-        return hr;
-#endif
-
 
     // Set primitive topology
     g_pImmediateContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
@@ -847,6 +832,10 @@ HRESULT InitDevice()
 
 
     hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"jump.dds", NULL, NULL, &g_pTextureRVJump, NULL);
+    if (FAILED(hr))
+        return hr;
+
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"pattern.dds", NULL, NULL, &g_pTextureRVPattern, NULL);
     if (FAILED(hr))
         return hr;
 #endif
@@ -939,6 +928,7 @@ void CleanupDevice()
     if (g_pTextureRVRight) g_pTextureRVRight->Release();
     if (g_pTextureRVLeft) g_pTextureRVLeft->Release();
     if (g_pTextureRVJump) g_pTextureRVJump->Release();
+    if (g_pTextureRVPattern) g_pTextureRVPattern->Release();
 
 }
 
@@ -1011,39 +1001,66 @@ void Render( )
     g_pSwapChain->Present( 0, 0 );
 }
 
+/// <summary>
+/// シーン管理を行う関数
+/// </summary>
+void SceneManagement() {
+    if (mNextScene != eScene::NONE) {   //次のシーンがセットされていれば
+        mScene = mNextScene;            //次のシーンをセットする
+        mNextScene = eScene::NONE;      //次のシーン情報をクリア
+    }
+
+    switch (mScene) {
+    case eScene::TITLE:
+        ChangeTitleScene();
+        RenderTitleScene();
+        break;
+    case eScene::SELECT:
+
+        break;
+    case eScene::GAME:
+        SetViewDir(0.0f, 3.0f, -6.0f);
+
+        DrawStage();    //ステージの描画
+        DrawDuck();
+        RenderGameUI();
+
+        break;
+    case eScene::CLEAR:
+
+        ChangeClearScene();
+        RenderClearScene();
+        break;
+    }
+}
 
 /// <summary>
 /// ステージの描画
 /// </summary>
-/// <returns>0</returns>
-int DrawStage() {
-
-#if 0
-    // Modify the color
-    g_vMeshColor.x = ( sinf( x * 10.0f ) + 1.0f ) * 0.5f;    //時間ごとに色の変化
-    g_vMeshColor.y = ( cosf( x * 3.0f ) + 1.0f ) * 0.5f;
-    g_vMeshColor.z = ( sinf( x * 5.0f ) + 1.0f ) * 0.5f;
-#endif 
+void DrawStage() {
     //
     // Update variables that change once per frame
     //
 
-        // Set vertex buffer
+    // Set vertex buffer
     UINT stride = sizeof(SimpleVertex);
     UINT offset = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 
     CBChangesEveryFrame cb;
-    //キューブのいろいろ
 
-    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, (StageSize - 1) * 2 * sqrt(2)); //最初に描くステージ
-    int cnt = 0;
+    //キューブの描画
+
+    g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(0, -1, (StageSize - 1) * 2 * sqrt(2)); //最初に描くステージの位置
+
     for (int Dep = 0; Dep < StageSize; Dep++) {
         for (int Wid = 0; Wid < StageSize; Wid++) {
-            for (int Hig = 0; Hig < StageLevel[cnt]; Hig++) {
-                int StageBoxPos[3] = { Wid - Dep, Hig -1, (StageSize - 1) * 2 - Wid - Dep}; //x,y,z
-
+            int IndexStageData = StageSize * Dep + Wid;
+            for (int Hig = 0; Hig < StageLevel[IndexStageData]; Hig++) {
+                int StageBoxPos[3] = { Wid - Dep, Hig -1, (StageSize - 1) * 2 - Wid - Dep}; //x,y,z　描画するステージの位置
+                //DirectXの座標系に変換
                 g_World = XMMatrixRotationY(XM_PI / 4) * XMMatrixTranslation(StageBoxPos[0] * sqrt(2), StageBoxPos[1], StageBoxPos[2] * sqrt(2));
+
                 cb.mWorld = XMMatrixTranspose(g_World);
                 cb.vMeshColor = g_vMeshColor;
                 cb.vLightDir = XMFLOAT4(0.1f, 1.0f, -0.3f, 1.0f);
@@ -1051,54 +1068,41 @@ int DrawStage() {
                 cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
                 g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
 
-                if (StageGimmick[StageSize * Dep + Wid] == 1) {
-                    //
-                    // Render the cube
-                    //
-                    if (GameClearFlag) {
-                        cb.vChangeColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-                        g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+                if (StageGimmick[IndexStageData] == 1) {    //ゴールの描画
+                    if (StageLevel[IndexStageData] - 1 == Hig) {
+                        if (GameClearFlag) {
+                            cb.vChangeColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+                            g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+                        }
+                        g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);      //シェーダー変更
                     }
-                    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
-                    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
-                    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
-                    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-                    g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);
-                    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-                    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
-                    g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
-                    g_pImmediateContext->DrawIndexed(36, 0, 0);
 
                 }
                 else {
-                    //
-                    // Render the cube
-                    //
-                    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
-                    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
-                    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
-                    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
                     g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
-                    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-                    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
-                    g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
-                    g_pImmediateContext->DrawIndexed(36, 0, 0);
-                }
 
+                }
+                //
+                // Render the cube
+                //
+                g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+                g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+                g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+                g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
+                g_pImmediateContext->DrawIndexed(36, 0, 0);
             }
-            cnt++;
         }
     }
-
-    return 0;
 }
 
 
 /// <summary>
 /// ひよこを描画する
 /// </summary>
-/// <returns>0</returns>
-int DrawDuck() {
+void DrawDuck() {
 
     //------------------------------------------------------------------
 //本体の描画
@@ -1107,20 +1111,6 @@ int DrawDuck() {
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer2, &stride2, &offset2);   //頂点バッファをセットする
 
     float FirstPosition[3] = { 0 , -0.86f, (StageSize - 1) * 2};
-
-#if 0
-    //前に進むプログラム
-    static bool KEYUP = true;
-    static int Before = 0;
-    if (key_input & KEY_UP) {
-        if (KEYUP) {
-            Before++;
-            KEYUP = false;
-        }
-    }
-    else KEYUP = true;
-#endif
-
 
     //座標系ステージの一番奥を(0,0)にする右斜め下X正、左斜め下Y正
 
@@ -1191,7 +1181,13 @@ int DrawDuck() {
     const float FlameTime = 0.4f;   //一個の移動にかかる時間
     static int countPlay = 0;       //実行される行動の個数
     static int CountPattern1Play = 0;
-    if (keyinputtrigger & KEY_P) PlayFlag = true;
+
+    if (keyinputtrigger & KEY_P) {
+        if (PlayOnceFlag) {
+            PlayFlag = true;
+            PlayOnceFlag = false;
+        }
+    }
 
     if (PlayFlag) {
 #if 1
@@ -1292,8 +1288,6 @@ int DrawDuck() {
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
     g_pImmediateContext->DrawIndexed(36, 0, 0);
-
-    return 0;
 }
 
 /// <summary>
@@ -1347,7 +1341,18 @@ void PlayDuckAction(int *duck_action, int action_list_index) {
     int move = CharacterDirection % Mod;                            //動く方向を処理するための数値
     int NextX = duckX + dx[move];                                   //次のX座標
     int NextY = duckY + dy[move];                                   //次のY座標
-    int NextStageLevel = StageLevel[StageSize * NextY + NextX];     //次のステージの高さ
+    int NextStageLevel = 0;                                         //次のステージの高さ
+    //ステージ外にいかいないように
+    if (NextX < 0 || StageSize - 1 < NextX) {
+        NextStageLevel = 0;
+    }
+    else if (NextY < 0 || StageSize - 1 < NextY) {
+        NextStageLevel = 0;
+    }
+    else {
+        NextStageLevel = StageLevel[StageSize * NextY + NextX];
+    }
+
 
     if (duck_action[action_list_index] & KEY_LEFT) {
         CharacterDirection--;   //左回転
@@ -1356,56 +1361,21 @@ void PlayDuckAction(int *duck_action, int action_list_index) {
         CharacterDirection++;   //右回転
     }
     if (duck_action[action_list_index] & KEY_UP) {
-        if (duckZ == NextStageLevel) {                              //同じ高さだけ動ける
-            //範囲外にでないようにする　範囲内にいるときだけ計算
-            if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-            if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
+        if (duckZ == NextStageLevel) {   //同じ高さだけ動ける
+            duckX += dx[move];
+            duckY += dy[move];
         }
     }
     if (duck_action[action_list_index] & KEY_SPACE) {
-        if (NextStageLevel != 0) {      //ステージがない箇所に行かないようにする
-            //範囲外にでないようにする
-            if (!(NextX < 0 || StageSize - 1 < NextX))          duckX += dx[move];
-            if (!(NextY < 0 || StageSize - 1 < NextY))          duckY += dy[move];
+        if (NextStageLevel > 0) {      //ステージがない箇所に行かないようにする
+            //高さが同じでもジャンプで前進できるようにしておく
+            duckX += dx[move];
+            duckY += dy[move];
         }
-
-        //高さが同じでもジャンプで前進できるようにしておく
-    }
-
-}
-
-/// <summary>
-/// シーン管理を行う関数
-/// </summary>
-void SceneManagement() {
-    if (mNextScene != eScene::NONE) {   //次のシーンがセットされていれば
-        mScene = mNextScene;            //次のシーンをセットする
-        mNextScene = eScene::NONE;      //次のシーン情報をクリア
-    }
-
-    switch (mScene) {
-    case eScene::TITLE:
-        ChangeTitleScene();
-        RenderTitleScene();
-        break;
-    case eScene::SELECT:
-
-        break;
-    case eScene::GAME:
-        SetViewDir(0.0f, 3.0f,-6.0f);
-
-        DrawStage();    //ステージの描画
-        DrawDuck();
-        RenderGameUI();
-
-        break;
-    case eScene::CLEAR:
-
-        ChangeClearScene();
-        RenderClearScene();
-        break;
     }
 }
+
+
 
 /// <summary>
 /// spaceキーでタイトルからシーン遷移
@@ -1420,8 +1390,7 @@ void ChangeTitleScene() {
 /// <summary>
 /// タイトルシーンの描画
 /// </summary>
-/// <returns>0</returns>
-int RenderTitleScene() {
+void RenderTitleScene() {
     SetViewDir(0.0f, 1.0f, -6.0f);
 
     // Set vertex buffer
@@ -1450,9 +1419,6 @@ int RenderTitleScene() {
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVTitle);
     g_pImmediateContext->DrawIndexed(6, 0, 0);
-
-;
-    return 0;
 }
 
 /// <summary>
@@ -1469,8 +1435,7 @@ void ChangeClearScene() {
 /// <summary>
 /// ゲームクリアシーンの描画
 /// </summary>
-/// <returns></returns>
-int RenderClearScene() {
+void RenderClearScene() {
     SetViewDir(0.0f, 1.0f, -6.0f);
 
     // Set vertex buffer
@@ -1499,9 +1464,6 @@ int RenderClearScene() {
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVClear);
     g_pImmediateContext->DrawIndexed(6, 0, 0);
-
-    ;
-    return 0;
 }
 
 
@@ -1511,8 +1473,7 @@ int RenderClearScene() {
 /// <param name="EyePosX">目のX座標</param>
 /// <param name="EyePosY">目のY座標</param>
 /// <param name="EyePosZ">目のZ座標</param>
-/// <returns>0</returns>
-int SetViewDir(float EyePosX,float EyePosY,float EyePosZ) {
+void SetViewDir(float EyePosX,float EyePosY,float EyePosZ) {
 
     // Initialize the view matrix       //ここを変更すると視点変更できる
     XMVECTOR Eye = XMVectorSet(EyePosX, EyePosY, EyePosZ, 0.0f);
@@ -1523,8 +1484,6 @@ int SetViewDir(float EyePosX,float EyePosY,float EyePosZ) {
     CBNeverChanges cbNeverChanges;
     cbNeverChanges.mView = XMMatrixTranspose(g_View);
     g_pImmediateContext->UpdateSubresource(g_pCBNeverChanges, 0, NULL, &cbNeverChanges, 0, 0);
-
-    return 0;
 }
 
 /// <summary>
@@ -1562,8 +1521,12 @@ void InitializeGameScene() {
     for (int i = 0; i < 8; i++) DuckActionPattern1[i] = 0;
     mainCount = 0;
     pattern1Count = 0;
+    PlayOnceFlag = true;
 }
 
+/// <summary>
+/// 
+/// </summary>
 void RenderGameUI() {
     // Set vertex buffer
     UINT stride5 = sizeof(SimpleVertex);
@@ -1592,6 +1555,7 @@ void RenderGameUI() {
             else if (key & KEY_LEFT)  g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVLeft);
             else if (key & KEY_RIGHT) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVRight);
             else if (key & KEY_SPACE) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVJump);
+            else if (key & KEY_E) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVPattern);
             else {
                 g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
             }
