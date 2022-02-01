@@ -373,7 +373,7 @@
   </ItemDefinitionGroup>
   <ItemGroup />
   <ItemGroup>
-    <ClCompile Include="Tutorial07.cpp" />
+    <ClCompile Include="DuckMain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tutorial07.fx" />
