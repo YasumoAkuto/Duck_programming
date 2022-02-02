@@ -11,22 +11,9 @@
 #include <d3dcompiler.h>
 #include <xnamath.h>
 #include "resource.h"
+#include "MainResource.h"
 
-#define KEY_LEFT 1
-#define KEY_RIGHT 2
-#define KEY_UP 4
-#define KEY_SPACE 8
-#define KEY_E 16
-#define KEY_P 32
-#define KEY_1 64
-#define KEY_2 128
-#define KEY_B 256
-#define KEY_R 512
-#define KEY_3 1024
-#define KEY_ESC 2048
-#define KEY_UPARROW 4096
-#define KEY_LEFTARROW 8192
-#define KEY_RIGHTARROW 16384
+
 
 enum class eScene {
     TITLE,      //0
@@ -145,8 +132,6 @@ HRESULT InitDevice();
 void CleanupDevice();
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
-void KeyInput();
-int KeyInputTriggerSense();
 void DrawStage();
 void DrawDuck();
 void PlayDuckAction(int duck_action);
@@ -324,7 +309,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,_In_opt_ HINSTANCE hPrevInstance,_I
     MSG msg = {0};
     while( WM_QUIT != msg.message )
     {
-        KeyInput();
+        key_input = readKey();
         if( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) )
         {
             TranslateMessage( &msg );
@@ -1223,7 +1208,7 @@ void DrawDuck() {
 
     //座標系ステージの一番奥を(0,0)にする右斜め下X正、左斜め下Y正
 
-    int keyinputtrigger = KeyInputTriggerSense();
+    int keyinputtrigger = KeyInputTriggerSense(key_input);
     
     if (keyinputtrigger & KEY_1) DuckActionMenu = KEY_1;
     if (keyinputtrigger & KEY_2) DuckActionMenu = KEY_2;
@@ -1403,53 +1388,9 @@ void DrawDuck() {
     g_pImmediateContext->DrawIndexed(36, 0, 0);
 }
 
-/// <summary>
-/// キー入力をとる。
-/// </summary>
-void KeyInput() {
-    key_input = 0;
-    if (GetAsyncKeyState('A') & 0x8000)         key_input |= KEY_LEFT;
-    if (GetAsyncKeyState('D') & 0x8000)         key_input |= KEY_RIGHT;
-    if (GetAsyncKeyState('W') & 0x8000)         key_input |= KEY_UP;
-    if (GetAsyncKeyState(' ') & 0x8000)         key_input |= KEY_SPACE;
-    if (GetAsyncKeyState('P') & 0x8000)         key_input |= KEY_P;
-    if (GetAsyncKeyState('1') & 0x8000)         key_input |= KEY_1;
-    if (GetAsyncKeyState('2') & 0x8000)         key_input |= KEY_2;
-    if (GetAsyncKeyState('3') & 0x8000)         key_input |= KEY_3;
-    if (GetAsyncKeyState('E') & 0x8000)         key_input |= KEY_E;
-    if (GetAsyncKeyState('B') & 0x8000)         key_input |= KEY_B;
-    if (GetAsyncKeyState('R') & 0x8000)         key_input |= KEY_R;
-    if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)   key_input |= KEY_ESC;
-    if (GetAsyncKeyState(VK_UP) & 0x8000)       key_input |= KEY_UPARROW;
-    if (GetAsyncKeyState(VK_LEFT) & 0x8000)       key_input |= KEY_LEFTARROW;
-    if (GetAsyncKeyState(VK_RIGHT) & 0x8000)       key_input |= KEY_RIGHTARROW;
-}
 
-/// <summary>
-/// トリガセンスのキー入力を返す
-/// </summary>
-/// <returns>key_input_triggersense</returns>
-int KeyInputTriggerSense() {
-    static int beforeKeyInput2 = 0;
-    int key_input_triggersense = 0;
-    if (key_input & KEY_LEFT)   if (!(beforeKeyInput2 & KEY_LEFT))  key_input_triggersense |= KEY_LEFT; 
-    if (key_input & KEY_RIGHT)  if (!(beforeKeyInput2 & KEY_RIGHT)) key_input_triggersense |= KEY_RIGHT; //右一回だけ
-    if (key_input & KEY_UP)     if (!(beforeKeyInput2 & KEY_UP))    key_input_triggersense |= KEY_UP; 
-    if (key_input & KEY_SPACE)  if (!(beforeKeyInput2 & KEY_SPACE)) key_input_triggersense |= KEY_SPACE;
-    if (key_input & KEY_P)      if (!(beforeKeyInput2 & KEY_P))     key_input_triggersense |= KEY_P;
-    if (key_input & KEY_1)      if (!(beforeKeyInput2 & KEY_1))     key_input_triggersense |= KEY_1;
-    if (key_input & KEY_2)      if (!(beforeKeyInput2 & KEY_2))     key_input_triggersense |= KEY_2;
-    if (key_input & KEY_3)      if (!(beforeKeyInput2 & KEY_3))     key_input_triggersense |= KEY_3;
-    if (key_input & KEY_E)      if (!(beforeKeyInput2 & KEY_E))     key_input_triggersense |= KEY_E;
-    if (key_input & KEY_B)      if (!(beforeKeyInput2 & KEY_B))     key_input_triggersense |= KEY_B;
-    if (key_input & KEY_R)      if (!(beforeKeyInput2 & KEY_R))     key_input_triggersense |= KEY_R;
-    if (key_input & KEY_ESC)    if (!(beforeKeyInput2 & KEY_ESC))   key_input_triggersense |= KEY_ESC;
-    if (key_input & KEY_UPARROW)if (!(beforeKeyInput2 & KEY_UPARROW))key_input_triggersense |= KEY_UPARROW;
-    if (key_input & KEY_LEFTARROW)    if (!(beforeKeyInput2 & KEY_LEFTARROW))   key_input_triggersense |= KEY_LEFTARROW;
-    if (key_input & KEY_RIGHTARROW)    if (!(beforeKeyInput2 & KEY_RIGHTARROW))   key_input_triggersense |= KEY_RIGHTARROW;
-    beforeKeyInput2 = key_input;
-    return key_input_triggersense;
-}
+
+
 
 /// <summary>
 /// ひよこのアクションを実行、再生する。
@@ -1504,7 +1445,7 @@ void PlayDuckAction(int duck_action) {
 /// spaceキーでタイトルからシーン遷移
 /// </summary>
 void TransitTitleScene() {
-    int InputKey = KeyInputTriggerSense();
+    int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::SELECT;
     }
@@ -1548,7 +1489,7 @@ void RenderTitleScene() {
 /// spaceキーでクリア画面からシーン遷移
 /// </summary>
 void TransitClearScene() {
-    int InputKey = KeyInputTriggerSense();
+    int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::TITLE;
     }
@@ -1774,8 +1715,6 @@ void RenderSelectScene() {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
-            cb.vMeshColor.y = 0.85f;
-            cb.vMeshColor.z = 0.8f;
             g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
             int key = DuckActionMain[hig * 6 + wid];
             g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
@@ -1825,7 +1764,7 @@ void RenderSelectScene() {
 /// 選択画面におけるキー入力による操作
 /// </summary>
 void KeyInputSelectScene() {
-    int InputKey = KeyInputTriggerSense();
+    int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::GAME;
     }

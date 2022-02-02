@@ -13,7 +13,9 @@
       <Extensions>fx;fxh;hlsl</Extensions>
     </Filter>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ClCompile Include="KeyInput.cpp" />
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DuckMain.cpp" />
   </ItemGroup>
@@ -29,6 +31,7 @@
     <ResourceCompile Include="Tutorial07.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+    <ClInclude Include="MainResource.h" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

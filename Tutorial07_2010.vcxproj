@@ -374,12 +374,14 @@
   <ItemGroup />
   <ItemGroup>
     <ClCompile Include="DuckMain.cpp" />
+    <ClCompile Include="KeyInput.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tutorial07.fx" />
   </ItemGroup>
   <ItemGroup>
     <CLInclude Include="resource.h" />
+    <ClInclude Include="MainResource.h" />
     <ResourceCompile Include="Tutorial07.rc" />
   </ItemGroup>
   <ItemGroup>
