@@ -149,7 +149,7 @@ void KeyInput();
 int KeyInputTriggerSense();
 void DrawStage();
 void DrawDuck();
-void PlayDuckAction(int* duck_action, int action_list_index);
+void PlayDuckAction(int duck_action);
 void SceneManagement();
 void TransitTitleScene();
 void RenderTitleScene();
@@ -1303,7 +1303,7 @@ void DrawDuck() {
         if (countPlay < 12) {   //12個までしか保存してない
             if (beforeTime + FlameTime < time) {    //以前実行したものから
                 if (DuckActionMain[countPlay] & KEY_E) {
-                    PlayDuckAction(DuckActionPattern1, CountPattern1Play);
+                    PlayDuckAction(DuckActionPattern1[CountPattern1Play]);
                     CountPattern1Play++;
                     if (CountPattern1Play >= 8) {           //配列の一番最後に0入れるとかでもいいかも？
                         countPlay++;
@@ -1315,7 +1315,7 @@ void DrawDuck() {
                     }
                 }
                 else {
-                    PlayDuckAction(DuckActionMain,countPlay);
+                    PlayDuckAction(DuckActionMain[countPlay]);
                     countPlay++;
                     if (countPlay >= 12) {}
                     else if (DuckActionMain[countPlay] == 0) {
@@ -1456,7 +1456,7 @@ int KeyInputTriggerSense() {
 /// </summary>
 /// <param name="duck_action">アクションの配列</param>
 /// <param name="action_list_index">実行したい配列のインデックス</param>
-void PlayDuckAction(int *duck_action, int action_list_index) {
+void PlayDuckAction(int duck_action) {
     //前後左右を計算しやすくするためのデータ
     const int dx[4] = { 1, 0, -1,  0 };
     const int dy[4] = { 0, 1,  0, -1 };
@@ -1477,19 +1477,19 @@ void PlayDuckAction(int *duck_action, int action_list_index) {
     }
 
 
-    if (duck_action[action_list_index] & KEY_LEFT) {
+    if (duck_action & KEY_LEFT) {
         CharacterDirection--;   //左回転
     }
-    if (duck_action[action_list_index] & KEY_RIGHT) {
+    if (duck_action & KEY_RIGHT) {
         CharacterDirection++;   //右回転
     }
-    if (duck_action[action_list_index] & KEY_UP) {
+    if (duck_action & KEY_UP) {
         if (duckZ == NextStageLevel) {   //同じ高さだけ動ける
             duckX += dx[move];
             duckY += dy[move];
         }
     }
-    if (duck_action[action_list_index] & KEY_SPACE) {
+    if (duck_action & KEY_SPACE) {
         if (NextStageLevel > 0) {      //ステージがない箇所に行かないようにする
             //高さが同じでもジャンプで前進できるようにしておく
             duckX += dx[move];
@@ -1656,6 +1656,7 @@ void InitializeGameScene() {
     for (int i = 0; i < 36; i++) {
         JudgeStandMap[i] = 0;
     }
+    SelectNum = 0;
 }
 
 /// <summary>
