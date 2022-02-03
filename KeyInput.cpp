@@ -6,7 +6,7 @@
 
 
 /// <summary>
-/// キー入力をとる。
+/// キー入力を読み取る
 /// </summary>
 int readKey() {
     int key_input = 0;

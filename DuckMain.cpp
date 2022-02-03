@@ -217,11 +217,11 @@ int StageLevelDatas[3][36]{
         1,1,1,1,1,1,
     },
     {
+        2,2,2,2,2,2,
+        2,2,2,2,2,2,
+        4,4,4,4,4,4,
         3,3,3,3,3,3,
-        3,3,3,5,4,3,
-        3,3,3,3,3,2,
-        3,3,3,3,3,1,
-        3,3,3,3,3,1,
+        2,2,2,2,2,2,
         1,1,1,1,1,1,
     },
     {
@@ -229,7 +229,7 @@ int StageLevelDatas[3][36]{
         2,2,2,2,2,2,
         2,2,2,2,2,2,
         2,2,2,2,2,2,
-        2,2,2,2,2,1,
+        2,2,2,2,2,2,
         1,1,1,1,1,1,
     }
 };
@@ -245,11 +245,11 @@ int StageGimmickDatas[3][36]{
     },
     {
         0,0,0,0,0,0,
-        0,0,0,1,0,0,
         0,0,0,0,0,0,
-        0,0,0,0,0,0,
-        0,0,0,0,0,0,
-        0,0,0,0,0,0,
+        2,2,2,2,2,2,
+        2,2,2,2,2,2,
+        2,2,2,2,2,2,
+        0,0,0,0,0,1,
     },
     {
         0,0,0,0,0,1,
@@ -1154,9 +1154,15 @@ void DrawStage() {
                     if (StageLevel[IndexStageData] - 1 == Hig) {
                         if (GameClearFlag) {
                             cb.vChangeColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-                            g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
                         }
+                        else {
+                            cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+                        }
+                        g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
                         g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);      //シェーダー変更
+                    }
+                    else {
+                        g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
                     }
 
                 }
@@ -1170,6 +1176,9 @@ void DrawStage() {
                         }
                         g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
                         g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);
+                    }
+                    else {
+                        g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
                     }
                 }
                 else {
@@ -1432,9 +1441,14 @@ void PlayDuckAction(int duck_action) {
     }
     if (duck_action & KEY_SPACE) {
         if (NextStageLevel > 0) {      //ステージがない箇所に行かないようにする
-            //高さが同じでもジャンプで前進できるようにしておく
-            duckX += dx[move];
-            duckY += dy[move];
+            //一段以上は越えられないようにする
+            if (NextStageLevel - duckZ <= 1) {
+                if (NextStageLevel - duckZ >= -1) {
+                    //高さが同じでもジャンプで前進できるようにしておく
+                    duckX += dx[move];
+                    duckY += dy[move];
+                }
+            }
         }
     }
 
