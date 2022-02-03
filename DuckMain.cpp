@@ -12,7 +12,7 @@
 #include <xnamath.h>
 #include "resource.h"
 #include "MainResource.h"
-
+#include <wchar.h>
 
 
 enum class eScene {
@@ -77,7 +77,7 @@ ID3D11Buffer*                       g_pIndexBuffer = NULL;
 ID3D11Buffer*                       g_pCBNeverChanges = NULL;
 ID3D11Buffer*                       g_pCBChangeOnResize = NULL;
 ID3D11Buffer*                       g_pCBChangesEveryFrame = NULL;
-ID3D11ShaderResourceView*           g_pTextureRV = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVStage = NULL;
 ID3D11SamplerState*                 g_pSamplerLinear = NULL;
 
 ID3D11PixelShader* g_pPixelShaderGoal = NULL;
@@ -87,7 +87,7 @@ ID3D11VertexShader*                 g_pVertexShader2 = NULL;
 ID3D11PixelShader*                  g_pPixelShader2 = NULL;
 ID3D11Buffer*                       g_pVertexBuffer2 = NULL;
 //ID3D11Buffer*                       g_pIndexBuffer2 = NULL;    //同じの使ってるからいらないわ
-ID3D11ShaderResourceView*           g_pTextureRV2 = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVHiyoko = NULL;
 
 //ひよこの頭用
 ID3D11Buffer*                       g_pVertexBuffer3 = NULL;
@@ -109,7 +109,45 @@ ID3D11ShaderResourceView*           g_pTextureRVLeft = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVJump = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVPattern = NULL;
 
-ID3D11ShaderResourceView*           g_pTextureRVSelect = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVSelectScene = NULL;
+
+ID3D11ShaderResourceView*           g_pTextureRVSelect1 = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVSelect2 = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVSelect3 = NULL;
+
+ID3D11ShaderResourceView** textureDatas[13] =
+{
+    &g_pTextureRVStage,
+    &g_pTextureRVHiyoko,
+    &g_pTextureRVTitle,
+    &g_pTextureRVClear,
+    &g_pTextureRVForward,
+    &g_pTextureRVRight,
+    &g_pTextureRVLeft,
+    &g_pTextureRVJump,
+    &g_pTextureRVPattern,
+    &g_pTextureRVSelectScene,
+    &g_pTextureRVSelect1,
+    &g_pTextureRVSelect2,
+    &g_pTextureRVSelect3,
+};
+
+wchar_t* textureNames[13] = {
+    {L"stage.dds" },
+    {L"hiyoko.dds" },
+    {L"title.dds"},
+    {L"gameclear.dds"},
+    {L"forward.dds"},
+    {L"right.dds"},
+    {L"left.dds"},
+    {L"jump.dds"},
+    {L"pattern.dds"},
+    {L"select.dds"},
+    {L"1.dds"},
+    {L"2.dds"},
+    {L"3.dds"},
+};
+
 
 ID3D11Buffer*                       g_pVertexBufferSelectUI = NULL;
 
@@ -285,6 +323,10 @@ static int SelectNum = 0;           //ステージセレクトの番号
 
 static int JudgeStandMap[36] = {};
 
+static bool PlayFlag = false;   //再生フラグ
+
+static int CountMainPlay = 0;           //実行されている行動の番号
+static int CountPattern1Play = 0;   //パターンのほう
 
 
 //--------------------------------------------------------------------------------------
@@ -870,52 +912,14 @@ HRESULT InitDevice()
 
     //----------------------------------------------------------------------
     // Load the Texture テクスチャの読み込み
-    hr = D3DX11CreateShaderResourceViewFromFile( g_pd3dDevice, L"stage.dds", NULL, NULL, &g_pTextureRV, NULL );
-    if( FAILED( hr ) )
-        return hr;
 
-#if 1
-    //２つ目のテクスチャの読み込み
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"hiyoko.dds", NULL, NULL, &g_pTextureRV2, NULL);
-    if (FAILED(hr))
-        return hr;
-
-    //タイトルのテクスチャの読み込み
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"title.dds", NULL, NULL, &g_pTextureRVTitle, NULL);
-    if (FAILED(hr))
-        return hr;
-
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"gameclear.dds", NULL, NULL, &g_pTextureRVClear, NULL);
-    if (FAILED(hr))
-        return hr;
-
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"forward.dds", NULL, NULL, &g_pTextureRVForward, NULL);
-    if (FAILED(hr))
-        return hr;
+    for (int i = 0; i < 13; i++) {
+        hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, textureNames[i], NULL, NULL, textureDatas[i], NULL);
+        if (FAILED(hr))
+            return hr;
+    }
 
 
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"left.dds", NULL, NULL, &g_pTextureRVLeft, NULL);
-    if (FAILED(hr))
-        return hr;
-
-
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"right.dds", NULL, NULL, &g_pTextureRVRight, NULL);
-    if (FAILED(hr))
-        return hr;
-
-
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"jump.dds", NULL, NULL, &g_pTextureRVJump, NULL);
-    if (FAILED(hr))
-        return hr;
-
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"pattern.dds", NULL, NULL, &g_pTextureRVPattern, NULL);
-    if (FAILED(hr))
-        return hr;
-
-    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"select.dds", NULL, NULL, &g_pTextureRVSelect, NULL);
-    if (FAILED(hr))
-        return hr;
-#endif
 
     //--------------------------------------------------------------
     // Create the sample state
@@ -965,7 +969,7 @@ void CleanupDevice()
     if( g_pImmediateContext ) g_pImmediateContext->ClearState();
 
     if( g_pSamplerLinear ) g_pSamplerLinear->Release();
-    if( g_pTextureRV ) g_pTextureRV->Release();
+    if( g_pTextureRVStage ) g_pTextureRVStage->Release();
     if( g_pCBNeverChanges ) g_pCBNeverChanges->Release();
     if( g_pCBChangeOnResize ) g_pCBChangeOnResize->Release();
     if( g_pCBChangesEveryFrame ) g_pCBChangesEveryFrame->Release();
@@ -987,7 +991,7 @@ void CleanupDevice()
     if (g_pVertexBuffer2) g_pVertexBuffer2->Release();
     if (g_pVertexShader2) g_pVertexShader2->Release();
     if (g_pPixelShader2) g_pPixelShader2->Release();
-    if (g_pTextureRV2) g_pTextureRV2->Release();
+    if (g_pTextureRVHiyoko) g_pTextureRVHiyoko->Release();
 
     if (g_pVertexBuffer3) g_pVertexBuffer3->Release();
    
@@ -1006,7 +1010,11 @@ void CleanupDevice()
     if (g_pTextureRVLeft) g_pTextureRVLeft->Release();
     if (g_pTextureRVJump) g_pTextureRVJump->Release();
     if (g_pTextureRVPattern) g_pTextureRVPattern->Release();
-    if (g_pTextureRVSelect) g_pTextureRVSelect->Release();
+
+    if (g_pTextureRVSelectScene) g_pTextureRVSelectScene->Release();
+    if (g_pTextureRVSelect1) g_pTextureRVSelect1->Release();
+    if (g_pTextureRVSelect2) g_pTextureRVSelect2->Release();
+    if (g_pTextureRVSelect3) g_pTextureRVSelect3->Release();
 
     if (g_pVertexBufferSelectUI) g_pVertexBufferSelectUI->Release();
 
@@ -1193,7 +1201,7 @@ void DrawStage() {
                 g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
                 g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
                 g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVStage);
                 g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
                 g_pImmediateContext->DrawIndexed(36, 0, 0);
             }
@@ -1279,11 +1287,10 @@ void DrawDuck() {
     }
 
     //再生システム
-    static bool PlayFlag = false;   //再生フラグ
+
     static float beforeTime = 0;    //移動する一個前に時間
     const float FlameTime = 0.4f;   //一個の移動にかかる時間
-    static int countPlay = 0;       //実行される行動の個数
-    static int CountPattern1Play = 0;
+
 
     if (keyinputtrigger & KEY_P) {
         if (PlayOnceFlag) {
@@ -1294,27 +1301,27 @@ void DrawDuck() {
 
     if (PlayFlag) {
 #if 1
-        if (countPlay < 12) {   //12個までしか保存してない
+        if (CountMainPlay < 12) {   //12個までしか保存してない
             if (beforeTime + FlameTime < time) {    //以前実行したものから
-                if (DuckActionMain[countPlay] & KEY_E) {
+                if (DuckActionMain[CountMainPlay] & KEY_E) {
                     PlayDuckAction(DuckActionPattern1[CountPattern1Play]);
                     CountPattern1Play++;
                     if (CountPattern1Play >= 8) {           //配列の一番最後に0入れるとかでもいいかも？
-                        countPlay++;
+                        CountMainPlay++;
                         CountPattern1Play = 0;
                     }
                     else if (DuckActionPattern1[CountPattern1Play] == 0) {  //配列の中がなにもないとき
-                        countPlay++;
+                        CountMainPlay++;
                         CountPattern1Play = 0;
                     }
                 }
                 else {
-                    PlayDuckAction(DuckActionMain[countPlay]);
-                    countPlay++;
-                    if (countPlay >= 12) {}
-                    else if (DuckActionMain[countPlay] == 0) {
+                    PlayDuckAction(DuckActionMain[CountMainPlay]);
+                    CountMainPlay++;
+                    if (CountMainPlay >= 12) {}
+                    else if (DuckActionMain[CountMainPlay] == 0) {
                         PlayFlag = false;
-                        countPlay = 0;
+                        CountMainPlay = 0;
                         JudgeGameClear();
                     }
                 }
@@ -1325,7 +1332,7 @@ void DrawDuck() {
         }
         else {
             PlayFlag = false;
-            countPlay = 0;
+            CountMainPlay = 0;
             JudgeGameClear();
         }
     }
@@ -1365,7 +1372,7 @@ void DrawDuck() {
     g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShader(g_pPixelShader2, NULL, 0);
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVHiyoko);
     g_pImmediateContext->DrawIndexed(36, 0, 0);
 
 
@@ -1393,13 +1400,9 @@ void DrawDuck() {
     g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShader(g_pPixelShader2, NULL, 0);
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV2);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVHiyoko);
     g_pImmediateContext->DrawIndexed(36, 0, 0);
 }
-
-
-
-
 
 /// <summary>
 /// ひよこのアクションを実行、再生する。
@@ -1607,6 +1610,7 @@ void InitializeGameScene() {
     for (int i = 0; i < 8; i++) DuckActionPattern1[i] = 0;
     mainCount = 0;
     pattern1Count = 0;
+    PlayFlag = false;
     PlayOnceFlag = true;
     for (int i = 0; i < 36; i++) {
         JudgeStandMap[i] = 0;
@@ -1636,6 +1640,7 @@ void RenderGameUI() {
             if (DuckActionMenu & KEY_1) {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
+            
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
             cb.vMeshColor.y = 0.85f;
             cb.vMeshColor.z = 0.8f;
@@ -1647,7 +1652,7 @@ void RenderGameUI() {
             else if (key & KEY_SPACE) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVJump);
             else if (key & KEY_E) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVPattern);
             else {
-                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVStage);
             }
 
             //
@@ -1677,6 +1682,9 @@ void RenderGameUI() {
             if (DuckActionMenu & KEY_2) {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
+            if (CountPattern1Play == 4 * hig + wid) {
+                change = 1.0f;
+            }
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
             cb.vMeshColor.x = 0.7f;
             cb.vMeshColor.z = 0.8f;
@@ -1691,7 +1699,7 @@ void RenderGameUI() {
             else if (key & KEY_RIGHT) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVRight);
             else if (key & KEY_SPACE) g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVJump);
             else {
-                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+                g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVStage);
             }
             g_pImmediateContext->VSSetShader(g_pVertexShader4, NULL, 0);
             g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
@@ -1717,8 +1725,10 @@ void RenderSelectScene() {
 
     CBChangesEveryFrame cb;
 
-    for (int wid = 0; wid < 6; wid++) {
-        for (int hig = 0; hig < 2; hig++) {
+    ID3D11ShaderResourceView* SelectTextureDatas[3] = { g_pTextureRVSelect1, g_pTextureRVSelect2, g_pTextureRVSelect3 };
+
+    for (int wid = 0; wid < 3; wid++) {
+        for (int hig = 0; hig < 1; hig++) {
             g_World = XMMatrixTranslation((wid - 2.5f) * 3.5f,  - hig * 1.1f * 4, -3);
             cb.mWorld = XMMatrixTranspose(g_World);
             cb.vMeshColor = g_vMeshColor;
@@ -1731,7 +1741,7 @@ void RenderSelectScene() {
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
             g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
             int key = DuckActionMain[hig * 6 + wid];
-            g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+            g_pImmediateContext->PSSetShaderResources(0, 1, &SelectTextureDatas[wid]);
 
             //
             // Render the cube
@@ -1770,7 +1780,7 @@ void RenderSelectScene() {
     g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
     g_pImmediateContext->PSSetShader(g_pPixelShader4, NULL, 0);
     g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
-    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVSelect);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVSelectScene);
     g_pImmediateContext->DrawIndexed(6, 0, 0);
 }
 
@@ -1785,10 +1795,10 @@ void KeyInputSelectScene() {
     else if (InputKey & KEY_ESC) {
         mNextScene = eScene::TITLE;
     }
-    if (InputKey & KEY_RIGHTARROW) {
+    if (InputKey & KEY_RIGHT) {
         if (SelectNum < 2) SelectNum++;
     }
-    if (InputKey & KEY_LEFTARROW) {
+    if (InputKey & KEY_LEFT) {
         if (SelectNum > 0) SelectNum--;
     }
 }

@@ -83,6 +83,7 @@ float4 PSGoal(PS_INPUT input) : SV_Target
     //finalColor = vLightColor;
     //finalColor += saturate(dot((float3)vLightDir, input.Norm) * vLightColor);
     finalColor.a = 1;
+    
     //finalColor.r = 1;
 
     return txDiffuse.Sample(samLinear, input.Tex) * vMeshColor * vChangeColor;
