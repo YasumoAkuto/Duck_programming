@@ -13,7 +13,8 @@
 #include "resource.h"
 #include "MainResource.h"
 #include <wchar.h>
-
+#include <stdio.h>
+#include "PlayAudioResource.h"
 
 enum class eScene {
     TITLE,      //0
@@ -111,11 +112,13 @@ ID3D11ShaderResourceView*           g_pTextureRVPattern = NULL;
 
 ID3D11ShaderResourceView*           g_pTextureRVSelectScene = NULL;
 
+ID3D11ShaderResourceView*           g_pTextureRVGameScene = NULL;
+
 ID3D11ShaderResourceView*           g_pTextureRVSelect1 = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVSelect2 = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVSelect3 = NULL;
 
-ID3D11ShaderResourceView** textureDatas[13] =
+ID3D11ShaderResourceView** textureDatas[14] =
 {
     &g_pTextureRVStage,
     &g_pTextureRVHiyoko,
@@ -127,12 +130,13 @@ ID3D11ShaderResourceView** textureDatas[13] =
     &g_pTextureRVJump,
     &g_pTextureRVPattern,
     &g_pTextureRVSelectScene,
+    &g_pTextureRVGameScene,
     &g_pTextureRVSelect1,
     &g_pTextureRVSelect2,
     &g_pTextureRVSelect3,
 };
 
-wchar_t* textureNames[13] = {
+wchar_t* textureNames[14] = {
     {L"stage.dds" },
     {L"hiyoko.dds" },
     {L"title.dds"},
@@ -143,6 +147,7 @@ wchar_t* textureNames[13] = {
     {L"jump.dds"},
     {L"pattern.dds"},
     {L"select.dds"},
+    {L"gamescene.dds"},
     {L"1.dds"},
     {L"2.dds"},
     {L"3.dds"},
@@ -159,6 +164,8 @@ XMMATRIX                            g_Projection;
 XMFLOAT4                            g_vMeshColor( 1.0f, 1.0f, 1.0f, 1.0f );
 int                                 key_input = 0;
 float                               time = 0.0f;
+
+IXAudio2SourceVoice* a_SourceVoices[10];
 
 
 
@@ -247,11 +254,19 @@ int StageGimmick[36] =
 
 int StageLevelDatas[3][36]{
     {
-        2,2,2,1,1,2,
-        2,1,1,2,0,0,
-        2,1,1,2,0,0,
+        0,0,0,0,0,2,
+        0,0,0,0,0,1,
+        0,0,3,2,1,1,
+        0,0,2,0,0,1,
+        0,0,1,0,0,1,
         1,1,1,1,1,1,
-        1,1,1,1,1,1,
+    },
+    {
+        0,0,0,0,0,2,
+        2,2,2,2,2,2,
+        2,0,0,0,0,2,
+        2,0,0,0,0,2,
+        2,2,2,2,2,2,
         1,1,1,1,1,1,
     },
     {
@@ -262,32 +277,16 @@ int StageLevelDatas[3][36]{
         2,2,2,2,2,2,
         1,1,1,1,1,1,
     },
-    {
-        2,2,2,2,2,2,
-        2,2,2,2,2,2,
-        2,2,2,2,2,2,
-        2,2,2,2,2,2,
-        2,2,2,2,2,2,
-        1,1,1,1,1,1,
-    }
 };
 
 int StageGimmickDatas[3][36]{
     {
         0,0,0,0,0,1,
         0,0,0,0,0,0,
+        0,0,2,0,0,0,
         0,0,0,0,0,0,
         0,0,0,0,0,0,
         0,0,0,0,0,0,
-        0,0,0,0,0,0,
-    },
-    {
-        0,0,0,0,0,0,
-        0,0,0,0,0,0,
-        2,2,2,2,2,2,
-        2,2,2,2,2,2,
-        2,2,2,2,2,2,
-        0,0,0,0,0,1,
     },
     {
         0,0,0,0,0,1,
@@ -296,6 +295,14 @@ int StageGimmickDatas[3][36]{
         0,0,0,0,0,2,
         2,0,0,0,0,0,
         0,0,0,0,0,2,
+    },
+    {
+        0,0,0,0,0,0,
+        0,0,0,0,0,0,
+        2,2,2,2,2,2,
+        2,2,2,2,2,2,
+        2,2,2,2,2,2,
+        0,0,0,0,0,1,
     },
 
 };
@@ -328,6 +335,8 @@ static bool PlayFlag = false;   //再生フラグ
 static int CountMainPlay = 0;           //実行されている行動の番号
 static int CountPattern1Play = 0;   //パターンのほう
 
+static float beforeTime = 0;    //移動する一個前の時間
+const float FlameTime = 0.6f;   //一個の移動にかかる時間
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -913,7 +922,7 @@ HRESULT InitDevice()
     //----------------------------------------------------------------------
     // Load the Texture テクスチャの読み込み
 
-    for (int i = 0; i < 13; i++) {
+    for (int i = 0; i < 14; i++) {
         hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, textureNames[i], NULL, NULL, textureDatas[i], NULL);
         if (FAILED(hr))
             return hr;
@@ -956,6 +965,15 @@ HRESULT InitDevice()
     CBChangeOnResize cbChangesOnResize;
     cbChangesOnResize.mProjection = XMMatrixTranspose( g_Projection );
     g_pImmediateContext->UpdateSubresource( g_pCBChangeOnResize, 0, NULL, &cbChangesOnResize, 0, 0 );
+
+
+    InitXAudio2();
+
+    if ((a_SourceVoices[1] = LoadSound(L"se_jump_002.wav", hr)) != NULL) { // サウンドデータの読み込み
+        // 読み込みエラー
+        return S_FALSE;
+    }
+
 
     return S_OK;
 }
@@ -1012,6 +1030,9 @@ void CleanupDevice()
     if (g_pTextureRVPattern) g_pTextureRVPattern->Release();
 
     if (g_pTextureRVSelectScene) g_pTextureRVSelectScene->Release();
+
+    if (g_pTextureRVGameScene) g_pTextureRVGameScene->Release();
+
     if (g_pTextureRVSelect1) g_pTextureRVSelect1->Release();
     if (g_pTextureRVSelect2) g_pTextureRVSelect2->Release();
     if (g_pTextureRVSelect3) g_pTextureRVSelect3->Release();
@@ -1229,9 +1250,12 @@ void DrawDuck() {
     
     if (keyinputtrigger & KEY_1) DuckActionMenu = KEY_1;
     if (keyinputtrigger & KEY_2) DuckActionMenu = KEY_2;
-    if (keyinputtrigger & KEY_R) InitializeGameScene();
-
-    switch (DuckActionMenu) {
+    if (keyinputtrigger & KEY_R) {
+        InitializeGameScene();
+        return;
+    }
+    if (PlayOnceFlag) {
+        switch (DuckActionMenu) {
         case KEY_1:
             if (mainCount < 12) {   //12個まで入れられるように
                 if (keyinputtrigger) {
@@ -1284,18 +1308,32 @@ void DrawDuck() {
                 }
             }
             break;
+        }
     }
-
     //再生システム
 
-    static float beforeTime = 0;    //移動する一個前に時間
-    const float FlameTime = 0.4f;   //一個の移動にかかる時間
+
+
 
 
     if (keyinputtrigger & KEY_P) {
         if (PlayOnceFlag) {
             PlayFlag = true;
             PlayOnceFlag = false;
+            beforeTime = time;
+        }
+        else {  //停止処理
+            GameClearFlag = false;
+            CharacterDirection = 100000;
+            duckX = 0;
+            duckY = StageSize - 1;
+            PlayFlag = false;
+            PlayOnceFlag = true;
+            for (int i = 0; i < 36; i++) {
+                JudgeStandMap[i] = 0;
+            }
+            CountMainPlay = 0;
+            CountPattern1Play = 0;
         }
     }
 
@@ -1318,10 +1356,14 @@ void DrawDuck() {
                 else {
                     PlayDuckAction(DuckActionMain[CountMainPlay]);
                     CountMainPlay++;
-                    if (CountMainPlay >= 12) {}
+                    if (CountMainPlay >= 12) {
+                        PlayFlag = false;
+                        //CountMainPlay = 0;
+                        JudgeGameClear();
+                    }
                     else if (DuckActionMain[CountMainPlay] == 0) {
                         PlayFlag = false;
-                        CountMainPlay = 0;
+                        //CountMainPlay = 0;
                         JudgeGameClear();
                     }
                 }
@@ -1332,7 +1374,7 @@ void DrawDuck() {
         }
         else {
             PlayFlag = false;
-            CountMainPlay = 0;
+            //CountMainPlay = 0;
             JudgeGameClear();
         }
     }
@@ -1440,6 +1482,7 @@ void PlayDuckAction(int duck_action) {
         if (duckZ == NextStageLevel) {   //同じ高さだけ動ける
             duckX += dx[move];
             duckY += dy[move];
+            playSound(a_SourceVoices[0]);
         }
     }
     if (duck_action & KEY_SPACE) {
@@ -1450,6 +1493,8 @@ void PlayDuckAction(int duck_action) {
                     //高さが同じでもジャンプで前進できるようにしておく
                     duckX += dx[move];
                     duckY += dy[move];
+                    playSound(a_SourceVoices[1]);
+               
                 }
             }
         }
@@ -1616,6 +1661,8 @@ void InitializeGameScene() {
         JudgeStandMap[i] = 0;
     }
     SelectNum = 0;
+    CountMainPlay = 0;
+    CountPattern1Play = 0;
 }
 
 /// <summary>
@@ -1640,7 +1687,47 @@ void RenderGameUI() {
             if (DuckActionMenu & KEY_1) {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
-            
+
+#if 0
+            static int cnt = 0;
+            static float before_cnt_time = 0;
+            static bool cnt_flag = true;
+            if (PlayOnceFlag == false) {
+                if (cnt < CountMainPlay) {
+                    cnt++;
+                    before_cnt_time = time;
+                }
+                else if (cnt <= CountMainPlay) {
+                    if (DuckActionMain[CountMainPlay] & KEY_E) {
+                        cnt++;
+                    }
+                }
+                if (PlayFlag == false) {
+                    if (cnt_flag) {
+                        if (before_cnt_time + FlameTime < time) {
+                            cnt++;
+                            cnt_flag = false;
+                        }
+                    }
+                }
+                if (cnt - 1  == 6 * hig + wid) {
+                    change = 1.3f;
+                }
+                if (cnt == 0) {
+                    if (6 * hig + wid == 11) {
+                        change = 1.3f;
+                    }
+                }
+
+            }
+#endif 
+
+            if (PlayOnceFlag == false) {
+                if (CountMainPlay - 1 == 6 * hig + wid) {
+                    change = 1.3f;
+                }
+            }
+
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
             cb.vMeshColor.y = 0.85f;
             cb.vMeshColor.z = 0.8f;
@@ -1682,9 +1769,42 @@ void RenderGameUI() {
             if (DuckActionMenu & KEY_2) {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
-            if (CountPattern1Play == 4 * hig + wid) {
-                change = 1.0f;
+
+
+#if 0
+            static int cnt2 = 0;
+            static float before_cnt_time2 = 0;
+            static bool cnt_flag2 = true;
+            if (PlayOnceFlag == false) {
+                if (cnt2 < CountPattern1Play) {
+                    cnt2++;
+                    before_cnt_time2 = time;
+                }
+                if (PlayFlag == false) {
+                    if (cnt_flag2) {
+                        if (before_cnt_time2 + FlameTime < time) {
+                            cnt2++;
+                            cnt_flag2 = false;
+                        }
+                    }
+                }
+                if (cnt2 - 1 == 4 * hig + wid) {
+                    change = 1.3f;
+                }
+                if (cnt2 == 0) {
+                    if (4 * hig + wid == 7) {
+                        change = 1.3f;
+                    }
+                }
             }
+#endif
+            if (PlayOnceFlag == false) {
+                if (CountPattern1Play - 1 == 4 * hig + wid) {
+                    change = 1.3f;
+                }
+            }
+
+
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
             cb.vMeshColor.x = 0.7f;
             cb.vMeshColor.z = 0.8f;
@@ -1710,6 +1830,34 @@ void RenderGameUI() {
             g_pImmediateContext->DrawIndexed(6, 0, 0);
         }
     }
+
+    //背景の部分に書きたいときに使おうと思ってる
+    // Set vertex buffer
+    UINT stride4 = sizeof(SimpleVertex);
+    UINT offset4 = 0;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer4, &stride4, &offset4);
+
+    g_World = XMMatrixTranslation(0, 1, 20) * XMMatrixRotationX(atan2(2, 6));
+
+    cb.mWorld = XMMatrixTranspose(g_World);
+    cb.vMeshColor = g_vMeshColor;
+    cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -1.0f, 1.0f);
+    cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+    cb.vChangeColor = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+    g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+
+    //
+    // Render the cube
+    //
+    g_pImmediateContext->VSSetShader(g_pVertexShader4, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCBNeverChanges);
+    g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pCBChangeOnResize);
+    g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShader(g_pPixelShader4, NULL, 0);
+    g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pCBChangesEveryFrame);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRVGameScene);
+    g_pImmediateContext->DrawIndexed(6, 0, 0);
+
 }
 
 /// <summary>
@@ -1736,7 +1884,9 @@ void RenderSelectScene() {
             cb.vLightColor = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
             float change = 1.0f;
             if (SelectNum == hig * 6 + wid) {
-                change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
+            }
+            else {
+                change = 0.8f;
             }
             cb.vChangeColor = XMFLOAT4(change, change, change, 1.0f);
             g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);

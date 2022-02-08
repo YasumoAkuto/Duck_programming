@@ -10,7 +10,7 @@
 Texture2D txDiffuse : register( t0 );
 SamplerState samLinear : register( s0 );
 
-cbuffer cbNeverChanges : register( b0 )     //ConstantBuffer定数バッファ
+cbuffer cbNeverChanges : register( b0 )     //ConstantBuffer
 {
     matrix View;
 };

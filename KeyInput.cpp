@@ -14,17 +14,14 @@ int readKey() {
     if (GetAsyncKeyState('D') & 0x8000)         key_input |= KEY_RIGHT;
     if (GetAsyncKeyState('W') & 0x8000)         key_input |= KEY_UP;
     if (GetAsyncKeyState(' ') & 0x8000)         key_input |= KEY_SPACE;
-    if (GetAsyncKeyState('P') & 0x8000)         key_input |= KEY_P;
+    if (GetAsyncKeyState(VK_RETURN) & 0x8000)         key_input |= KEY_P;
     if (GetAsyncKeyState('1') & 0x8000)         key_input |= KEY_1;
     if (GetAsyncKeyState('2') & 0x8000)         key_input |= KEY_2;
     if (GetAsyncKeyState('3') & 0x8000)         key_input |= KEY_3;
-    if (GetAsyncKeyState('E') & 0x8000)         key_input |= KEY_E;
-    if (GetAsyncKeyState('B') & 0x8000)         key_input |= KEY_B;
+    if (GetAsyncKeyState('P') & 0x8000)         key_input |= KEY_E;
+    if (GetAsyncKeyState(VK_BACK) & 0x8000)         key_input |= KEY_B;
     if (GetAsyncKeyState('R') & 0x8000)         key_input |= KEY_R;
     if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)   key_input |= KEY_ESC;
-    if (GetAsyncKeyState(VK_UP) & 0x8000)       key_input |= KEY_UPARROW;
-    if (GetAsyncKeyState(VK_LEFT) & 0x8000)       key_input |= KEY_LEFTARROW;
-    if (GetAsyncKeyState(VK_RIGHT) & 0x8000)       key_input |= KEY_RIGHTARROW;
     return key_input;
 }
 
@@ -47,9 +44,6 @@ int KeyInputTriggerSense(int key_input) {
     if (key_input & KEY_B)      if (!(beforeKeyInput2 & KEY_B))     key_input_triggersense |= KEY_B;
     if (key_input & KEY_R)      if (!(beforeKeyInput2 & KEY_R))     key_input_triggersense |= KEY_R;
     if (key_input & KEY_ESC)    if (!(beforeKeyInput2 & KEY_ESC))   key_input_triggersense |= KEY_ESC;
-    if (key_input & KEY_UPARROW)if (!(beforeKeyInput2 & KEY_UPARROW))key_input_triggersense |= KEY_UPARROW;
-    if (key_input & KEY_LEFTARROW)    if (!(beforeKeyInput2 & KEY_LEFTARROW))   key_input_triggersense |= KEY_LEFTARROW;
-    if (key_input & KEY_RIGHTARROW)    if (!(beforeKeyInput2 & KEY_RIGHTARROW))   key_input_triggersense |= KEY_RIGHTARROW;
     beforeKeyInput2 = key_input;
     return key_input_triggersense;
 }
