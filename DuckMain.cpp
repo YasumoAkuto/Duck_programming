@@ -1482,7 +1482,7 @@ void PlayDuckAction(int duck_action) {
         if (duckZ == NextStageLevel) {   //ìØÇ∂çÇÇ≥ÇæÇØìÆÇØÇÈ
             duckX += dx[move];
             duckY += dy[move];
-            playSound(a_SourceVoices[0]);
+            PlaySound(TEXT("jump.wav"), NULL, SND_FILENAME | SND_ASYNC);
         }
     }
     if (duck_action & KEY_SPACE) {
@@ -1510,6 +1510,7 @@ void TransitTitleScene() {
     int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::SELECT;
+        PlaySound(TEXT("se_pikon13.wav"), NULL, SND_FILENAME | SND_ASYNC);
     }
 }
 
@@ -1638,6 +1639,7 @@ void TlansitGameScene(float& ClearedTime) {
         if (ClearedTime + TransitBeforeTime < time) {
             mScene = eScene::CLEAR;
             InitializeGameScene();
+            PlaySound(TEXT("shinein.wav"), NULL, SND_FILENAME | SND_ASYNC);
         }
     }
 }
@@ -1941,6 +1943,7 @@ void KeyInputSelectScene() {
     int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::GAME;
+        PlaySound(TEXT("se_pikon13.wav"), NULL, SND_FILENAME | SND_ASYNC);
     }
     else if (InputKey & KEY_ESC) {
         mNextScene = eScene::TITLE;
