@@ -117,8 +117,10 @@ ID3D11ShaderResourceView*           g_pTextureRVGameScene = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVSelect1 = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVSelect2 = NULL;
 ID3D11ShaderResourceView*           g_pTextureRVSelect3 = NULL;
+ID3D11ShaderResourceView*           g_pTextureRVSelect4 = NULL;
 
-ID3D11ShaderResourceView** textureDatas[14] =
+const int textureNum = 15;
+ID3D11ShaderResourceView** textureDatas[textureNum] =
 {
     &g_pTextureRVStage,
     &g_pTextureRVHiyoko,
@@ -134,9 +136,10 @@ ID3D11ShaderResourceView** textureDatas[14] =
     &g_pTextureRVSelect1,
     &g_pTextureRVSelect2,
     &g_pTextureRVSelect3,
+    &g_pTextureRVSelect4,
 };
 
-wchar_t* textureNames[14] = {
+wchar_t* textureNames[textureNum] = {
     {L"stage.dds" },
     {L"hiyoko.dds" },
     {L"title.dds"},
@@ -151,6 +154,7 @@ wchar_t* textureNames[14] = {
     {L"1.dds"},
     {L"2.dds"},
     {L"3.dds"},
+    {L"4.dds"},
 };
 
 
@@ -252,7 +256,7 @@ int StageGimmick[36] =
     0,0,0,0,0,0,
 };
 
-int StageLevelDatas[3][36]{
+int StageLevelDatas[4][36]{
     {
         0,0,0,0,0,2,
         0,0,0,0,0,1,
@@ -277,15 +281,23 @@ int StageLevelDatas[3][36]{
         2,2,2,2,2,2,
         1,1,1,1,1,1,
     },
+        {
+        2,2,2,2,2,2,
+        2,2,2,2,2,2,
+        0,0,0,0,0,2,
+        0,0,0,0,0,0,
+        2,2,2,2,2,2,
+        1,1,1,1,1,1,
+    },
 };
 
-int StageGimmickDatas[3][36]{
+int StageGimmickDatas[4][36]{
     {
         0,0,0,0,0,1,
         0,0,0,0,0,0,
         0,0,2,0,0,0,
         0,0,0,0,0,0,
-        0,0,0,0,0,0,
+        0,0,3,0,0,3,
         0,0,0,0,0,0,
     },
     {
@@ -304,7 +316,14 @@ int StageGimmickDatas[3][36]{
         2,2,2,2,2,2,
         0,0,0,0,0,1,
     },
-
+        {
+        0,2,2,2,2,2,
+        3,2,2,2,2,2,
+        0,0,0,0,0,1,
+        0,0,0,0,0,0,
+        2,2,2,2,2,2,
+        0,2,2,2,2,3,
+    },
 };
 
 //キャラクターの向きを持つデータをmod4で
@@ -336,7 +355,11 @@ static int CountMainPlay = 0;           //実行されている行動の番号
 static int CountPattern1Play = 0;   //パターンのほう
 
 static float beforeTime = 0;    //移動する一個前の時間
-const float FlameTime = 0.6f;   //一個の移動にかかる時間
+const float FlameTime = 0.5f;   //一個の移動にかかる時間
+
+static bool warpFlag = true;
+
+static int warpTurn = 0;
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -922,7 +945,7 @@ HRESULT InitDevice()
     //----------------------------------------------------------------------
     // Load the Texture テクスチャの読み込み
 
-    for (int i = 0; i < 14; i++) {
+    for (int i = 0; i < textureNum; i++) {
         hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, textureNames[i], NULL, NULL, textureDatas[i], NULL);
         if (FAILED(hr))
             return hr;
@@ -1036,6 +1059,8 @@ void CleanupDevice()
     if (g_pTextureRVSelect1) g_pTextureRVSelect1->Release();
     if (g_pTextureRVSelect2) g_pTextureRVSelect2->Release();
     if (g_pTextureRVSelect3) g_pTextureRVSelect3->Release();
+    if (g_pTextureRVSelect4) g_pTextureRVSelect4->Release();
+
 
     if (g_pVertexBufferSelectUI) g_pVertexBufferSelectUI->Release();
 
@@ -1210,6 +1235,21 @@ void DrawStage() {
                         g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
                     }
                 }
+                else if (StageGimmick[IndexStageData] == 3) {
+                    if (StageLevel[IndexStageData] - 1 == Hig) {
+                        if (IndexStageData == StageSize * duckY + duckX) {
+                            cb.vChangeColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+                        }
+                        else {
+                            cb.vChangeColor = XMFLOAT4(0.5f, 0.0f, 1.0f, 1.0f);
+                        }
+                        g_pImmediateContext->UpdateSubresource(g_pCBChangesEveryFrame, 0, NULL, &cb, 0, 0);
+                        g_pImmediateContext->PSSetShader(g_pPixelShaderGoal, NULL, 0);
+                    }
+                    else {
+                        g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
+                    }
+                }
                 else {
                     g_pImmediateContext->PSSetShader(g_pPixelShader, NULL, 0);
 
@@ -1334,6 +1374,8 @@ void DrawDuck() {
             }
             CountMainPlay = 0;
             CountPattern1Play = 0;
+            warpFlag = true;
+            warpTurn = 0;
         }
     }
 
@@ -1341,30 +1383,56 @@ void DrawDuck() {
 #if 1
         if (CountMainPlay < 12) {   //12個までしか保存してない
             if (beforeTime + FlameTime < time) {    //以前実行したものから
-                if (DuckActionMain[CountMainPlay] & KEY_E) {
-                    PlayDuckAction(DuckActionPattern1[CountPattern1Play]);
-                    CountPattern1Play++;
-                    if (CountPattern1Play >= 8) {           //配列の一番最後に0入れるとかでもいいかも？
-                        CountMainPlay++;
-                        CountPattern1Play = 0;
-                    }
-                    else if (DuckActionPattern1[CountPattern1Play] == 0) {  //配列の中がなにもないとき
-                        CountMainPlay++;
-                        CountPattern1Play = 0;
+                
+                if (StageGimmick[StageSize * duckY + duckX] == 3) {
+                    warpTurn++;
+                    if (warpFlag) {
+                        int NextDuck = 0;
+                        for (int i = 0; i < 36; i++) {
+                            if (StageGimmick[i] == 3) {
+                                if (i != StageSize * duckY + duckX) {
+                                    NextDuck = i;
+                                }
+                            }
+                        }
+                        int warpNextX = 0;
+                        int warpNextY = 0;
+                        warpNextY = NextDuck / StageSize;
+                        warpNextX = NextDuck % StageSize;
+                        duckX = warpNextX;
+                        duckY = warpNextY;
+                        PlaySound(TEXT("warp.wav"),NULL, SND_FILENAME | SND_ASYNC);
+                        duckZ = StageLevel[NextDuck];
+                        warpFlag = false;
                     }
                 }
-                else {
-                    PlayDuckAction(DuckActionMain[CountMainPlay]);
-                    CountMainPlay++;
-                    if (CountMainPlay >= 12) {
-                        PlayFlag = false;
-                        //CountMainPlay = 0;
-                        JudgeGameClear();
+                if (StageGimmick[StageSize * duckY + duckX] != 3 || warpTurn > 1){
+                    
+                    if (DuckActionMain[CountMainPlay] & KEY_E) {
+                        PlayDuckAction(DuckActionPattern1[CountPattern1Play]);
+                        CountPattern1Play++;
+                        if (CountPattern1Play >= 8) {           //配列の一番最後に0入れるとかでもいいかも？
+                            CountMainPlay++;
+                            CountPattern1Play = 0;
+                        }
+                        else if (DuckActionPattern1[CountPattern1Play] == 0) {  //配列の中がなにもないとき
+                            CountMainPlay++;
+                            CountPattern1Play = 0;
+                        }
                     }
-                    else if (DuckActionMain[CountMainPlay] == 0) {
-                        PlayFlag = false;
-                        //CountMainPlay = 0;
-                        JudgeGameClear();
+                    else {
+                        PlayDuckAction(DuckActionMain[CountMainPlay]);
+                        CountMainPlay++;
+                        if (CountMainPlay >= 12) {
+                            PlayFlag = false;
+                            //CountMainPlay = 0;
+                            JudgeGameClear();
+                        }
+                        else if (DuckActionMain[CountMainPlay] == 0) {
+                            PlayFlag = false;
+                            //CountMainPlay = 0;
+                            JudgeGameClear();
+                        }
                     }
                 }
 
@@ -1483,6 +1551,8 @@ void PlayDuckAction(int duck_action) {
             duckX += dx[move];
             duckY += dy[move];
             PlaySound(TEXT("jump.wav"), NULL, SND_FILENAME | SND_ASYNC);
+            warpFlag = true;
+            warpTurn = 0;
         }
     }
     if (duck_action & KEY_SPACE) {
@@ -1494,7 +1564,8 @@ void PlayDuckAction(int duck_action) {
                     duckX += dx[move];
                     duckY += dy[move];
                     playSound(a_SourceVoices[1]);
-               
+                    warpFlag = true;
+                    warpTurn = 0;
                 }
             }
         }
@@ -1665,6 +1736,8 @@ void InitializeGameScene() {
     SelectNum = 0;
     CountMainPlay = 0;
     CountPattern1Play = 0;
+    warpFlag = true;
+    warpTurn = 0;
 }
 
 /// <summary>
@@ -1689,40 +1762,6 @@ void RenderGameUI() {
             if (DuckActionMenu & KEY_1) {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
-
-#if 0
-            static int cnt = 0;
-            static float before_cnt_time = 0;
-            static bool cnt_flag = true;
-            if (PlayOnceFlag == false) {
-                if (cnt < CountMainPlay) {
-                    cnt++;
-                    before_cnt_time = time;
-                }
-                else if (cnt <= CountMainPlay) {
-                    if (DuckActionMain[CountMainPlay] & KEY_E) {
-                        cnt++;
-                    }
-                }
-                if (PlayFlag == false) {
-                    if (cnt_flag) {
-                        if (before_cnt_time + FlameTime < time) {
-                            cnt++;
-                            cnt_flag = false;
-                        }
-                    }
-                }
-                if (cnt - 1  == 6 * hig + wid) {
-                    change = 1.3f;
-                }
-                if (cnt == 0) {
-                    if (6 * hig + wid == 11) {
-                        change = 1.3f;
-                    }
-                }
-
-            }
-#endif 
 
             if (PlayOnceFlag == false) {
                 if (CountMainPlay - 1 == 6 * hig + wid) {
@@ -1772,34 +1811,6 @@ void RenderGameUI() {
                 change = (sinf(time * 5.0f) + 15.0f) * 0.0625f;
             }
 
-
-#if 0
-            static int cnt2 = 0;
-            static float before_cnt_time2 = 0;
-            static bool cnt_flag2 = true;
-            if (PlayOnceFlag == false) {
-                if (cnt2 < CountPattern1Play) {
-                    cnt2++;
-                    before_cnt_time2 = time;
-                }
-                if (PlayFlag == false) {
-                    if (cnt_flag2) {
-                        if (before_cnt_time2 + FlameTime < time) {
-                            cnt2++;
-                            cnt_flag2 = false;
-                        }
-                    }
-                }
-                if (cnt2 - 1 == 4 * hig + wid) {
-                    change = 1.3f;
-                }
-                if (cnt2 == 0) {
-                    if (4 * hig + wid == 7) {
-                        change = 1.3f;
-                    }
-                }
-            }
-#endif
             if (PlayOnceFlag == false) {
                 if (CountPattern1Play - 1 == 4 * hig + wid) {
                     change = 1.3f;
@@ -1875,9 +1886,14 @@ void RenderSelectScene() {
 
     CBChangesEveryFrame cb;
 
-    ID3D11ShaderResourceView* SelectTextureDatas[3] = { g_pTextureRVSelect1, g_pTextureRVSelect2, g_pTextureRVSelect3 };
+    ID3D11ShaderResourceView* SelectTextureDatas[4] = { 
+        g_pTextureRVSelect1,
+        g_pTextureRVSelect2, 
+        g_pTextureRVSelect3,
+        g_pTextureRVSelect4,
+    };
 
-    for (int wid = 0; wid < 3; wid++) {
+    for (int wid = 0; wid < 4; wid++) {
         for (int hig = 0; hig < 1; hig++) {
             g_World = XMMatrixTranslation((wid - 2.5f) * 3.5f,  - hig * 1.1f * 4, -3);
             cb.mWorld = XMMatrixTranspose(g_World);
@@ -1949,7 +1965,7 @@ void KeyInputSelectScene() {
         mNextScene = eScene::TITLE;
     }
     if (InputKey & KEY_RIGHT) {
-        if (SelectNum < 2) SelectNum++;
+        if (SelectNum < 3) SelectNum++;
     }
     if (InputKey & KEY_LEFT) {
         if (SelectNum > 0) SelectNum--;
