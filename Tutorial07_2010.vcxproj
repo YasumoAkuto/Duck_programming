@@ -375,7 +375,6 @@
   <ItemGroup>
     <ClCompile Include="DuckMain.cpp" />
     <ClCompile Include="KeyInput.cpp" />
-    <ClCompile Include="PlayAudio.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tutorial07.fx" />
@@ -383,7 +382,6 @@
   <ItemGroup>
     <CLInclude Include="resource.h" />
     <ClInclude Include="MainResource.h" />
-    <ClInclude Include="PlayAudioResource.h" />
     <ResourceCompile Include="Tutorial07.rc" />
   </ItemGroup>
   <ItemGroup>

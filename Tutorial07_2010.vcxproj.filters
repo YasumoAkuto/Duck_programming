@@ -15,7 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="KeyInput.cpp" />
-    <ClCompile Include="PlayAudio.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DuckMain.cpp" />
@@ -33,7 +32,6 @@
       <Filter>Resource Files</Filter>
     </ResourceCompile>
     <ClInclude Include="MainResource.h" />
-    <ClInclude Include="PlayAudioResource.h" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

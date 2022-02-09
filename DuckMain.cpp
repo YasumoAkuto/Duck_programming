@@ -14,7 +14,6 @@
 #include "MainResource.h"
 #include <wchar.h>
 #include <stdio.h>
-#include "PlayAudioResource.h"
 
 enum class eScene {
     TITLE,      //0
@@ -168,9 +167,6 @@ XMMATRIX                            g_Projection;
 XMFLOAT4                            g_vMeshColor( 1.0f, 1.0f, 1.0f, 1.0f );
 int                                 key_input = 0;
 float                               time = 0.0f;
-
-IXAudio2SourceVoice* a_SourceVoices[10];
-
 
 
 //--------------------------------------------------------------------------------------
@@ -988,16 +984,6 @@ HRESULT InitDevice()
     CBChangeOnResize cbChangesOnResize;
     cbChangesOnResize.mProjection = XMMatrixTranspose( g_Projection );
     g_pImmediateContext->UpdateSubresource( g_pCBChangeOnResize, 0, NULL, &cbChangesOnResize, 0, 0 );
-
-
-    InitXAudio2();
-
-    if ((a_SourceVoices[1] = LoadSound(L"se_jump_002.wav", hr)) != NULL) { // サウンドデータの読み込み
-        // 読み込みエラー
-        return S_FALSE;
-    }
-
-
     return S_OK;
 }
 
@@ -1401,7 +1387,7 @@ void DrawDuck() {
                         warpNextX = NextDuck % StageSize;
                         duckX = warpNextX;
                         duckY = warpNextY;
-                        PlaySound(TEXT("warp.wav"),NULL, SND_FILENAME | SND_ASYNC);
+                        PlaySound(TEXT("data\\warp.wav"),NULL, SND_FILENAME | SND_ASYNC);
                         duckZ = StageLevel[NextDuck];
                         warpFlag = false;
                     }
@@ -1550,7 +1536,7 @@ void PlayDuckAction(int duck_action) {
         if (duckZ == NextStageLevel) {   //同じ高さだけ動ける
             duckX += dx[move];
             duckY += dy[move];
-            PlaySound(TEXT("jump.wav"), NULL, SND_FILENAME | SND_ASYNC);
+            PlaySound(TEXT("data\\jump.wav"), NULL, SND_FILENAME | SND_ASYNC);
             warpFlag = true;
             warpTurn = 0;
         }
@@ -1563,7 +1549,7 @@ void PlayDuckAction(int duck_action) {
                     //高さが同じでもジャンプで前進できるようにしておく
                     duckX += dx[move];
                     duckY += dy[move];
-                    playSound(a_SourceVoices[1]);
+                    PlaySound(TEXT("data\\se_jump_002.wav"), NULL, SND_FILENAME | SND_ASYNC);
                     warpFlag = true;
                     warpTurn = 0;
                 }
@@ -1581,7 +1567,7 @@ void TransitTitleScene() {
     int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::SELECT;
-        PlaySound(TEXT("se_pikon13.wav"), NULL, SND_FILENAME | SND_ASYNC);
+        PlaySound(TEXT("data\\se_pikon13.wav"), NULL, SND_FILENAME | SND_ASYNC);
     }
 }
 
@@ -1710,7 +1696,7 @@ void TlansitGameScene(float& ClearedTime) {
         if (ClearedTime + TransitBeforeTime < time) {
             mScene = eScene::CLEAR;
             InitializeGameScene();
-            PlaySound(TEXT("shinein.wav"), NULL, SND_FILENAME | SND_ASYNC);
+            PlaySound(TEXT("data\\shinein.wav"), NULL, SND_FILENAME | SND_ASYNC);
         }
     }
 }
@@ -1959,7 +1945,7 @@ void KeyInputSelectScene() {
     int InputKey = KeyInputTriggerSense(key_input);
     if (InputKey & KEY_SPACE) {
         mNextScene = eScene::GAME;
-        PlaySound(TEXT("se_pikon13.wav"), NULL, SND_FILENAME | SND_ASYNC);
+        PlaySound(TEXT("data\\se_pikon13.wav"), NULL, SND_FILENAME | SND_ASYNC);
     }
     else if (InputKey & KEY_ESC) {
         mNextScene = eScene::TITLE;
